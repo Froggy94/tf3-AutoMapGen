@@ -11,7 +11,7 @@ and snow where they really are: tree line, rock line and snow line in metres abo
 >
 > Unofficial project, not affiliated with Urban Games or the publisher of Transport Fever.
 
-<!-- Pictures from the game: e.g. Brenner valley overview, forest edges and fields close up, the north-south transition,
+<!-- Pictures from the game: e.g. Innsbruck valley overview, forest edges and fields close up, the north-south transition,
      a waterfall. Files in assets/pictures/, referenced here. -->
 
 ## Quick guide: your own map
@@ -43,7 +43,7 @@ graphs or nodes.
 **Into the game:** activate the climate mod and the two map mods, open the map editor with this climate and map size,
 import the heightmap with the values the page shows, then the biome map with its layer files, then the towns and
 industries file. Every field and step in detail: **[docsHuman/getting_started.md](docsHuman/getting_started.md)**.
-To try it first, load the ready project **Brenner** and click *Generate*.
+To try it first, load the ready project **Innsbruck_Example** (size Medium) and click *Generate*.
 
 ## Change the map with an AI assistant
 
@@ -70,7 +70,7 @@ For people:
 |---|---|
 | [docsHuman/getting_started.md](docsHuman/getting_started.md) | for map makers: install, first map, into the game, changing things with an AI assistant |
 | [docsHuman/climate_mod.md](docsHuman/climate_mod.md) | the game's terrain generator, the import layers, what the climate mod does |
-| [docsHuman/example.md](docsHuman/example.md) | the generation of a real map (Brenner), step by step |
+| [docsHuman/example.md](docsHuman/example.md) | the generation of a real map (Innsbruck_Example), step by step |
 | [docsHuman/architecture.md](docsHuman/architecture.md) | principles, what a graph is, how the classes work together |
 | [docsHuman/node_guide.md](docsHuman/node_guide.md) | for developers: writing nodes, graph and parameter formats |
 | [docsHuman/graphs/](docsHuman/graphs/) | the built-in graphs as diagrams |
@@ -129,7 +129,7 @@ industry names after the nearest town.
 | `<map>.png` (16-bit heightmap) and the import values (minimum, maximum and water height) | map editor: heightmap import |
 | `<map>_biomes.png` and `<map>_<layer>.png` (forest, meadow, cropland, rock ...) | map editor: biome import and its layer fields |
 | `<map>_industries.lua` (towns and industries) | map editor: towns and industries import |
-| climate mod, e.g. `DHE-Alpine-Realistic-300m-Scale-0_5-BETA` | climate of the new map |
+| climate mod, e.g. `DHE-Alpine-Realistic-500m-Scale-0_5-BETA` | climate of the new map |
 | map mods `DHE_<map>_path_streets` and `DHE_<map>_industry_names` | activated for the map |
 | previews (`_biome_preview.png`, `_rivers_preview.png`, `_towns_preview.png` ...) | checks before the import |
 

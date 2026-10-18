@@ -132,7 +132,7 @@ def test_changes_at_the_stores_reach_the_nodes(advanced: AdvancedSettings) -> No
     assert (banks["passes"], banks["smooth_factor"]) == (3, 4)
 
 
-@pytest.mark.parametrize("project", ["brenner", "golden_test", "golden_test_parcels"])
+@pytest.mark.parametrize("project", ["innsbruck_example", "brenner", "golden_test", "golden_test_parcels"])
 def test_every_sink_of_the_map_graphs_belongs_to_a_processing_step(project: str) -> None:
     steps = GuiSettings.load(CONFIGS / "gui.toml").steps
     store, library = ProjectStore(CONFIGS / "projects"), FolderLibrary([GRAPHS_DIR])

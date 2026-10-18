@@ -1,0 +1,17 @@
+# Project "Innsbruck_Example": the example map of the guides - Innsbruck and the Inn valley with the Nordkette and the
+# Stubai/Wipp valley entrances, map size Medium (44 x 44 tiles), scale 1:2, preset Alpine Realistic, all other values
+# the defaults (reference height = the lowest point, real water up to 120 m above it).
+#   automapgen run --project innsbruck_example --cache cache   (or in the GUI: load "Innsbruck_Example", Generate)
+graph = "map"
+extends = ["../presets/alpine_realistic.toml"]
+
+[params]
+map_name = "Innsbruck_Example"
+dem_download = { dem_type = "GEDTM30" }          # downloaded once from OpenTopography (free API key)
+crop = { west = 11.24648, south = 47.15593, east = 11.54466, north = 47.35968 }
+game_width_km = 11.264                           # map size Medium, format 1:1
+game_height_km = 11.264
+scale = 2                                        # 1:2 - one game metre stands for two real metres
+rotation_deg = 0
+water_sink_m = 40
+max_towns = 32

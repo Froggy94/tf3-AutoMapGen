@@ -29,9 +29,9 @@ scales mountains to about 380 game metres. Its rules (read from `temperate_clima
 | snow in hollows | from 330-390 |
 | snow | from 380-430 |
 
-A real Alpine region is much higher. On the Brenner map (scale 1:2, game height 0 = 250 m a.s.l.) one game metre is
-two real metres, so the base game would end the forest at 870 m a.s.l., paint rock from 910 m and snow from 1,010 m
-a.s.l. In reality the tree line lies at about 2,000 m and permanent snow above 2,500 m.
+A real Alpine region is much higher. On the Innsbruck example map (scale 1:2, game height 0 = 549 m a.s.l.) one game
+metre is two real metres, so the base game would end the forest at 1,169 m a.s.l., paint rock from 1,209 m and snow
+from 1,309 m a.s.l. In reality the tree line lies at about 2,000 m and permanent snow above 2,500 m.
 
 **The game has a single water level.** A river that falls several hundred metres across the map cannot be real water
 everywhere. Above the water level it has to be painted, and the base climates have no ground for painted water.
@@ -134,13 +134,13 @@ elevation of the preset:
 *game height = (real elevation - reference height) x scale*
 
 A climate mod is therefore valid for one reference height and one scale, and its name states both, e.g.
-`DHE Alpine Realistic 300m Scale 0.5 BETA`. Maps with the same reference height and scale share one mod.
+`DHE Alpine Realistic 500m Scale 0.5 BETA`. Maps with the same reference height and scale share one mod.
 
 So that maps with a similar lowest land share one mod, the mod's reference height is the map's lowest land rounded
 to 100 m (`climate_reference_step_m`, 0 = exact; 550 m and 560 m both give 600 m). The heightmap keeps the exact
 lowest land as game height 0. The mod's height rules therefore shift by the difference, at most half a step: on the
-Brenner map (lowest land 250 m, mod 300 m, scale 1:2) 2,500 m a.s.l. becomes (2,500 - 300) x 0.5 = 1,100 game
-metres, which on this map lies at 2,450 m a.s.l.
+Innsbruck example map (lowest land 549 m, mod 500 m, scale 1:2) 2,500 m a.s.l. becomes (2,500 - 500) x 0.5 = 1,000
+game metres, which on this map lies at 2,549 m a.s.l.
 
 ## 5. The look as data: presets and transitions
 

@@ -44,15 +44,16 @@ On the left side of the page:
 
 Both are stored in `local/settings.toml` on your computer only.
 
-## 3. Try the example: Brenner
+## 3. Try the example: Innsbruck
 
-1. Under *Project*, choose **Brenner** in the list and click *Load*.
+1. Under *Project*, choose **Innsbruck_Example** in the list and click *Load*. It is a map of size Medium (44 x 44
+   tiles) around Innsbruck at scale 1:2, with the preset and all defaults.
 2. Click **Generate** at the bottom.
 
 The first run downloads the elevation model, OpenStreetMap data and land cover and then computes the map; this takes
 a while (the console below the map shows the progress). Later runs reuse what is unchanged and are much faster.
 
-At the end the page shows the values for the game's import dialog. The files are in `output/Brenner/` and, with a
+At the end the page shows the values for the game's import dialog. The files are in `output/Innsbruck_Example/` and, with a
 user data folder, already in the game.
 
 ## 4. Your own map
@@ -84,7 +85,7 @@ description. You need neither for a first map.
 ## 5. Into the game
 
 1. In the game, open *Mods* and activate the climate mod (its name contains the preset, the reference height and the
-   scale, e.g. *DHE Alpine Realistic 300m Scale 0.5 BETA*) and the map's mods (`DHE_<map>_path_streets`,
+   scale, e.g. *DHE Alpine Realistic 500m Scale 0.5 BETA*) and the map's mods (`DHE_<map>_path_streets`,
    `DHE_<map>_industry_names`).
 2. Start the **map editor** with this climate and the map size and aspect ratio you chose.
 3. Import the **heightmap** with the minimum and maximum height the page showed; water height 0.
@@ -93,7 +94,7 @@ description. You need neither for a first map.
 5. Import the **towns and industries** file once, on the freshly imported map.
 6. Save the map and start a game from it.
 
-The Brenner walk-through in [example.md](example.md) explains each step of the generation in detail.
+The walk-through of this example in [example.md](example.md) explains each step of the generation in detail.
 
 ## 6. Change looks and maps with an AI assistant
 
