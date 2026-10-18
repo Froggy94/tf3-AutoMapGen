@@ -126,6 +126,7 @@ Issues can be reported on the project page; they are read, but there is no promi
 
 ## When you publish a map
 
-The map contains third-party data. Name the sources in its description: "Map data © OpenStreetMap contributors (ODbL),
-land cover ESA WorldCover 2021 (CC BY 4.0), elevation <data set> via OpenTopography". Details:
-[README.md](../README.md#data-sources-and-licenses).
+State in the description of the map that it was made with this program: **"Generated with DHE-tf3-AutoMapGen"**
+(https://github.com/Froggy94/tf3-AutoMapGen). The map also contains third-party data; name the sources too: "Map data
+© OpenStreetMap contributors (ODbL), land cover ESA WorldCover 2021 (CC BY 4.0), elevation <data set> via
+OpenTopography". Details: [README.md](../README.md#publishing-a-map-credits).

@@ -46,6 +46,9 @@ import the heightmap with the values the page shows, then the biome map with its
 industries file. Every field and step in detail: **[docsHuman/getting_started.md](docsHuman/getting_started.md)**.
 To try it first, load the ready project **Innsbruck_Example** (size Medium) and click *Generate*.
 
+**Publishing your map?** Name the generator and the data sources in its description - see
+[Publishing a map: credits](#publishing-a-map-credits).
+
 ## Change the map with an AI assistant
 
 The program is meant to be adapted **without programming**: everything it does is described by text files - the look
@@ -233,9 +236,13 @@ and attribution notices.
 Related project: [TPF3 Map Studio](https://github.com/sharpi13822/TPF3-Map-Studio), a user-friendly desktop tool that
 prepares real-world data for TF3 maps.
 
-## Data sources and licenses
+## Publishing a map: credits
 
-Generated maps contain third-party data. Name the sources when you publish a map:
+When you publish a map made with this program (e.g. on the Steam Workshop or a mod portal), state in its description:
+
+> **Generated with DHE-tf3-AutoMapGen** (https://github.com/Froggy94/tf3-AutoMapGen)
+
+Generated maps also contain third-party data; name these sources too:
 
 - Map data: © OpenStreetMap contributors, Open Database License (ODbL 1.0)
 - Land cover: ESA WorldCover 10 m 2021 v200, © ESA WorldCover project, CC BY 4.0
