@@ -45,4 +45,7 @@ steepness of each move, not going up and down; the profile was smoothed over 40 
   `approach_smooth_game_m`; changed defaults: bridge from 10 m, tunnel from 12 m, bridge cost 10, tunnel cost 12,
   profile smoothing 120 m.
 - Fills and cuts up to 10 / 12 m are worked into the heightmap; larger differences only occur on spans.
+- Measured on the Brenner map: grade sign changes 1.8 -> 0.54 per km, bridges 52 -> 36 (steeper than 8 %: 45 -> 3,
+  varying grade: 41 -> 2), tunnels 7 -> 1, longest bridge 1414 -> 447 m; Innsbruck example: bridges 10 -> 7.
+- Verified in game on the Brenner map, 2026-10-18 (first look): bridges, tunnels and grades look good.
 - Open: road ends that look like dead ends in game (spurs to industries, ends in front of towns).
