@@ -8,8 +8,9 @@
    Other towns and industries are kept clear, planned routes become cheaper (they bundle; shared stretches are
    built once).
 3. Sections between junctions, towns and industries; roads end at the town edge and in front of the industry.
-4. Per section: arcs (`alignment`), longitudinal profile with bridges and tunnels (`profile`), the same height at
-   every junction; ways split where the kind changes.
+4. Per section: arcs (`alignment`), longitudinal profile (`profile`): bridges and tunnels only on the straight
+   structure legs and over the wet zone, as straight spans at a constant grade with fitted approaches; the same
+   height at every junction; ways split where the kind changes.
 5. The terrain under the normal ways is shaped to the profile (like `roads.terrain`); bridges and tunnels leave it.
 Positions in game metres from the top-left map corner (x right, y down).
 """
@@ -81,6 +82,9 @@ class RoadNetworkParams(NodeParams):
     """Steepest grade (height / distance)."""
     slope_weight: float = 2.0
     """Surcharge for the grade (at max_grade: cost x 1 + slope_weight)."""
+    climb_weight: float = param(3.0, ge=0)
+    """Cost per metre of height gained or lost (in metres of road): steady grades and a curve more instead of up
+    and down."""
     turn_weight: float = 0.3
     """Surcharge per radian of turning (in cells of length); keeps the line calm."""
     forest_cost: float = 0.3
@@ -100,27 +104,42 @@ class RoadNetworkParams(NodeParams):
     reuse_factor: float = param(0.3, gt=0, le=1)
     """Planned roads cost only this much (bundling)."""
     max_structure_game_m: float = param(400.0, ge=0, unit="game m")
-    """Longest bridge or tunnel of the route search."""
-    bridge_cost: float = 6.0
-    """Surcharge per metre of bridge."""
-    tunnel_cost: float = 8.0
+    """Longest straight structure move of the route search (bridge, tunnel, fill or cut)."""
+    bridge_cost: float = 10.0
+    """Surcharge per metre of bridge ..."""
+    bridge_height_cost: float = param(0.5, ge=0)
+    """... plus this per metre of bridge and metre of height above the ground (high bridges cost more)."""
+    fill_cost: float = param(0.2, ge=0)
+    """Surcharge per metre of fill and metre of height (below bridge_from_game_m; cheaper than a bridge)."""
+    cut_cost: float = param(0.25, ge=0)
+    """Surcharge per metre of cut and metre of depth (above tunnel_from_game_m; cheaper than a tunnel)."""
+    tunnel_cost: float = 12.0
     """Surcharge per metre of tunnel."""
     structure_fixed_game_m: float = param(300.0, ge=0, unit="game m")
     """Fixed cost of a bridge or tunnel (abutments, portals) as metres of road."""
+    structure_max_grade: float = param(0.06, gt=0)
+    """Bridges and tunnels at most this steep (they cross; the road climbs on the ground)."""
     straighten_game_m: float = param(10.0, ge=0, unit="game m")
     """Straighten the zigzag of the grid up to this deviation."""
     sample_game_m: float = param(4.0, gt=0, unit="game m")
     """Sample the line this finely (profile, terrain)."""
     node_game_m: float = param(12.0, gt=0, unit="game m")
     """Distance of the plan's nodes."""
-    profile_smooth_game_m: float = param(40.0, ge=0, unit="game m")
-    """Smooth the longitudinal profile."""
-    bridge_from_game_m: float = param(6.0, gt=0, unit="game m")
-    """Bridge where the road lies this much above the ground."""
-    tunnel_from_game_m: float = param(10.0, gt=0, unit="game m")
-    """Tunnel where the road lies this much below the ground."""
-    min_structure_game_m: float = param(30.0, ge=0, unit="game m")
-    """Shorter bridges and tunnels are dropped (the terrain is shaped instead)."""
+    profile_smooth_game_m: float = param(120.0, ge=0, unit="game m")
+    """Smooth the longitudinal profile of the normal road (long = steady grades; fills and cuts take the rest)."""
+    approach_smooth_game_m: float = param(30.0, ge=0, unit="game m")
+    """Smooth the approaches to bridges and tunnels."""
+    bridge_from_game_m: float = param(10.0, gt=0, unit="game m")
+    """Bridge where the road lies this much above the ground; below a fill."""
+    tunnel_from_game_m: float = param(12.0, gt=0, unit="game m")
+    """Tunnel where the road lies this much below the ground; above a cut."""
+    min_bridge_game_m: float = param(30.0, ge=0, unit="game m")
+    """Shorter bridges become fills (not over water)."""
+    min_tunnel_game_m: float = param(150.0, ge=0, unit="game m")
+    """Shorter tunnels become cuts."""
+    max_span_extend_game_m: float = param(60.0, ge=0, unit="game m")
+    """A bridge or tunnel span grows at most this far beyond its leg of the route search (to the rim of a gorge:
+    the legs end on the cells of the search grid)."""
     max_structure_gap_game_m: float = param(40.0, ge=0, unit="game m")
     """Normal pieces between two bridges (tunnels) up to this length become part of them."""
     end_blend_game_m: float = param(60.0, ge=0, unit="game m")
@@ -339,7 +358,9 @@ class _Router:
         p = self._p
         return LatticeCosts(cell_m, p.min_radius_game_m, p.max_grade, p.slope_weight, p.turn_weight,
                             structure_steps, p.max_structure_game_m, p.bridge_cost, p.tunnel_cost,
-                            p.structure_fixed_game_m)
+                            p.structure_fixed_game_m, p.climb_weight, p.bridge_from_game_m, p.tunnel_from_game_m,
+                            p.bridge_height_cost, p.fill_cost, p.cut_cost, p.structure_max_grade,
+                            p.min_tunnel_game_m)
 
     def route(self) -> _Routes:
         towns = [i for i, t in enumerate(self._targets) if t.kind == "town"]
@@ -532,10 +553,11 @@ class _SectionBuilder:
         self._routes = routes
         self._p = params
         self._aligner = AlignmentBuilder(params.min_radius_game_m, params.straighten_game_m, params.sample_game_m)
-        self._profiles = ProfilePlanner(ProfileRules(params.max_grade, params.profile_smooth_game_m,
-                                                     params.bridge_from_game_m, params.tunnel_from_game_m,
-                                                     params.min_structure_game_m, params.max_structure_gap_game_m,
-                                                     params.wet_clearance_game_m))
+        self._profiles = ProfilePlanner(ProfileRules(
+            params.max_grade, params.profile_smooth_game_m, params.approach_smooth_game_m, params.bridge_from_game_m,
+            params.tunnel_from_game_m, params.min_bridge_game_m, params.min_tunnel_game_m,
+            params.max_span_extend_game_m, params.max_structure_gap_game_m, params.wet_clearance_game_m,
+            params.structure_max_grade))
 
     def sections(self) -> list[_Section]:
         adj: dict[Cell, set[Cell]] = {}

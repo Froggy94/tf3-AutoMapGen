@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Experimental road network (`map_roads`): bridges and tunnels only where the route search plans them, as straight
+  spans at a constant grade (at most 6 %) with fitted approaches; bridges from 10 m above the ground (below: fills),
+  tunnels from 12 m below and 150 m long (shorter: cuts); bridge costs grow with the height; steady grades instead of
+  going up and down (ADR 0018).
+- Faster terrain stamping of roads and paths (same result).
+
 ## 0.1.0 - prototype (2026-10-18)
 
 First public version: a technology study that generates Transport Fever 3 maps of real regions.

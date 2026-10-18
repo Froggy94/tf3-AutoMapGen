@@ -1191,6 +1191,7 @@ Parameters:
 - `min_radius_game_m` (number, default `25.0`, unit game m, > 0): Smallest curve radius.
 - `max_grade` (number, default `0.2`, > 0): Steepest grade (height / distance).
 - `slope_weight` (number, default `2.0`): Surcharge for the grade (at max_grade: cost x 1 + slope_weight).
+- `climb_weight` (number, default `3.0`, >= 0): Cost per metre of height gained or lost (in metres of road): steady grades and a curve more instead of up and down.
 - `turn_weight` (number, default `0.3`): Surcharge per radian of turning (in cells of length); keeps the line calm.
 - `forest_cost` (number, default `0.3`): Surcharge per forest share.
 - `rock_cost` (number, default `1.0`): Surcharge per rock share.
@@ -1200,17 +1201,24 @@ Parameters:
 - `valley_game_m` (number, default `150.0`, unit game m, >= 0): Near the wet zone the ground costs more (rather higher up the slope than down by the river) ...
 - `valley_cost` (number, default `1.0`): ... up to this surcharge at the zone, falling to 0 at valley_game_m.
 - `reuse_factor` (number, default `0.3`, > 0, <= 1): Planned roads cost only this much (bundling).
-- `max_structure_game_m` (number, default `400.0`, unit game m, >= 0): Longest bridge or tunnel of the route search.
-- `bridge_cost` (number, default `6.0`): Surcharge per metre of bridge.
-- `tunnel_cost` (number, default `8.0`): Surcharge per metre of tunnel.
+- `max_structure_game_m` (number, default `400.0`, unit game m, >= 0): Longest straight structure move of the route search (bridge, tunnel, fill or cut).
+- `bridge_cost` (number, default `10.0`): Surcharge per metre of bridge ...
+- `bridge_height_cost` (number, default `0.5`, >= 0): ... plus this per metre of bridge and metre of height above the ground (high bridges cost more).
+- `fill_cost` (number, default `0.2`, >= 0): Surcharge per metre of fill and metre of height (below bridge_from_game_m; cheaper than a bridge).
+- `cut_cost` (number, default `0.25`, >= 0): Surcharge per metre of cut and metre of depth (above tunnel_from_game_m; cheaper than a tunnel).
+- `tunnel_cost` (number, default `12.0`): Surcharge per metre of tunnel.
 - `structure_fixed_game_m` (number, default `300.0`, unit game m, >= 0): Fixed cost of a bridge or tunnel (abutments, portals) as metres of road.
+- `structure_max_grade` (number, default `0.06`, > 0): Bridges and tunnels at most this steep (they cross; the road climbs on the ground).
 - `straighten_game_m` (number, default `10.0`, unit game m, >= 0): Straighten the zigzag of the grid up to this deviation.
 - `sample_game_m` (number, default `4.0`, unit game m, > 0): Sample the line this finely (profile, terrain).
 - `node_game_m` (number, default `12.0`, unit game m, > 0): Distance of the plan's nodes.
-- `profile_smooth_game_m` (number, default `40.0`, unit game m, >= 0): Smooth the longitudinal profile.
-- `bridge_from_game_m` (number, default `6.0`, unit game m, > 0): Bridge where the road lies this much above the ground.
-- `tunnel_from_game_m` (number, default `10.0`, unit game m, > 0): Tunnel where the road lies this much below the ground.
-- `min_structure_game_m` (number, default `30.0`, unit game m, >= 0): Shorter bridges and tunnels are dropped (the terrain is shaped instead).
+- `profile_smooth_game_m` (number, default `120.0`, unit game m, >= 0): Smooth the longitudinal profile of the normal road (long = steady grades; fills and cuts take the rest).
+- `approach_smooth_game_m` (number, default `30.0`, unit game m, >= 0): Smooth the approaches to bridges and tunnels.
+- `bridge_from_game_m` (number, default `10.0`, unit game m, > 0): Bridge where the road lies this much above the ground; below a fill.
+- `tunnel_from_game_m` (number, default `12.0`, unit game m, > 0): Tunnel where the road lies this much below the ground; above a cut.
+- `min_bridge_game_m` (number, default `30.0`, unit game m, >= 0): Shorter bridges become fills (not over water).
+- `min_tunnel_game_m` (number, default `150.0`, unit game m, >= 0): Shorter tunnels become cuts.
+- `max_span_extend_game_m` (number, default `60.0`, unit game m, >= 0): A bridge or tunnel span grows at most this far beyond its leg of the route search (to the rim of a gorge: the legs end on the cells of the search grid).
 - `max_structure_gap_game_m` (number, default `40.0`, unit game m, >= 0): Normal pieces between two bridges (tunnels) up to this length become part of them.
 - `end_blend_game_m` (number, default `60.0`, unit game m, >= 0): At junctions and ends the profile meets the ground height over this length.
 - `width_game_m` (number, default `14.0`, unit game m, > 0): Width of the levelled strip under the road (carriageway and walkways).

@@ -2,8 +2,13 @@
 
 A normal move goes to a neighbour in one of 16 directions and may turn against the previous move only as much as the
 minimum radius allows (an arc of that radius must fit between the middles of both moves). A structure move
-(bridge or tunnel) continues straight over several cells at a constant grade. Costs: length x land cover factor x
-grade term, a small surcharge per turn; structures cost per metre above (bridge) or below (tunnel) the ground.
+continues straight over several cells at a constant grade and must contain a bridge or a tunnel: where it lies at
+least `bridge_from_m` above the ground (or over water) it is a bridge, at least `tunnel_from_m` below a tunnel, in
+between a fill or a cut (the normal road gets its fills and cuts from the profile). Costs: length x
+land cover factor x grade term, every metre of height gained or lost (steady grades instead of up and down), a small
+surcharge per turn; per metre of a structure move: bridges by their height, fills and cuts by their height or depth
+(less than bridges and tunnels), tunnels; bridges and tunnels only at a gentle grade, tunnels not shorter than
+`min_tunnel_m`.
 Lengths and heights in game metres; cells are (row, column) of a window of the map grid.
 """
 
@@ -41,6 +46,14 @@ class LatticeCosts:
     bridge_cost: float                     # surcharge per metre of bridge (cost of a normal metre = 1)
     tunnel_cost: float
     structure_fixed_m: float               # fixed cost of a structure (abutments, portals), in metres of road
+    climb_weight: float                    # cost per metre of height gained or lost
+    bridge_from_m: float                   # a bridge from this height above the ground, below a fill
+    tunnel_from_m: float                   # a tunnel from this depth below the ground, above a cut
+    bridge_height_cost: float              # bridge surcharge per metre of length and metre of height
+    fill_cost: float                       # fill surcharge per metre of length and metre of height
+    cut_cost: float                        # cut surcharge per metre of length and metre of depth
+    structure_max_grade: float             # bridges and tunnels at most this steep
+    min_tunnel_m: float                    # shorter tunnels are not built (a cut instead)
 
 
 @dataclass(frozen=True)
@@ -61,7 +74,7 @@ class Terrain:
 
 @dataclass(frozen=True)
 class Step:
-    """One move of a route: from cell to cell; `structure` for bridge/tunnel moves."""
+    """One move of a route: from cell to cell; `structure` for the straight moves (with a bridge or tunnel)."""
 
     start: tuple[int, int]
     end: tuple[int, int]
@@ -167,26 +180,42 @@ class MoveTable:
         relative = np.abs(t.height[yt, xt] - t.height[ys, xs]) / length / c.max_grade
         ok = self._free[ys, xs] & self._free[yt, xt] & (relative <= self._serpentine)
         grade_term = np.where(relative <= 1, 1 + c.slope_weight * relative ** 2, (1 + c.slope_weight) * relative)
-        cost = length * (t.factor[ys, xs] + t.factor[yt, xt]) / 2 * grade_term
+        climb = c.climb_weight * np.abs(t.height[yt, xt] - t.height[ys, xs])
+        cost = length * (t.factor[ys, xs] + t.factor[yt, xt]) / 2 * grade_term + climb
         return self._index[ys, xs][ok], self._index[yt, xt][ok], cost[ok]
 
     def structure(self, dx: int, dy: int, steps: int) -> Moves:
-        """Straight moves over `steps` direction steps at a constant grade; cost by the height above or below the
-        ground at every step in between."""
+        """Straight moves over `steps` direction steps at a constant grade; every step in between is a bridge (high
+        above the ground or over water), a fill, a cut or a tunnel (deep below) and costs accordingly."""
         t, c = self._t, self._c
         length = math.hypot(dx, dy) * c.cell_m * steps
         if length > c.max_structure_m:
             empty = np.zeros(0, dtype=np.int64)
             return empty, empty, np.zeros(0)
+        piece = length / steps
         ys, xs, yt, xt = self._pairs(dx * steps, dy * steps)
         start, end = t.height[ys, xs], t.height[yt, xt]
-        ok = self._free[ys, xs] & self._free[yt, xt] & (np.abs(end - start) / length <= c.max_grade)
-        cost = np.full(start.shape, c.structure_fixed_m + length / steps)       # fixed part and the last step
+        grade = np.abs(end - start) / length
+        ok = self._free[ys, xs] & self._free[yt, xt] & (grade <= c.max_grade)
+        cost = piece + c.climb_weight * np.abs(end - start)                     # the last step, the height change
+        bridge = np.zeros(start.shape, dtype=bool)
+        tunnel_m = np.zeros(start.shape)
         for k in range(1, steps):
             between = (slice(ys.start + dy * k, ys.stop + dy * k), slice(xs.start + dx * k, xs.stop + dx * k))
-            above = start + (end - start) * k / steps > t.height[between]
-            cost += length / steps * np.where(above, 1 + c.bridge_cost, 1 + c.tunnel_cost)
+            lift = start + (end - start) * k / steps - t.height[between]
+            on_bridge = (lift >= c.bridge_from_m) | t.crossing_only[between]     # water is always bridged
+            in_tunnel = ~on_bridge & (lift <= -c.tunnel_from_m)
+            surcharge = np.where(on_bridge, c.bridge_cost + c.bridge_height_cost * np.maximum(lift, 0),
+                                 np.where(in_tunnel, c.tunnel_cost,
+                                          np.where(lift > 0, c.fill_cost * lift, c.cut_cost * -lift)))
+            cost += piece * (1 + surcharge)
+            bridge |= on_bridge
+            tunnel_m += piece * in_tunnel
             ok &= ~t.blocked[between]                             # water may be crossed, blocked cells not
+        structure = bridge | (tunnel_m > 0)
+        cost += c.structure_fixed_m
+        ok &= structure & (grade <= c.structure_max_grade)        # straight moves only for bridges and tunnels
+        ok &= (tunnel_m == 0) | (tunnel_m >= c.min_tunnel_m)
         return self._index[ys, xs][ok], self._index[yt, xt][ok], cost[ok]
 
     def _pairs(self, dx: int, dy: int) -> tuple[slice, slice, slice, slice]:

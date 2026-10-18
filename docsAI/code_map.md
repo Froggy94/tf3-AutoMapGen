@@ -46,10 +46,12 @@ src/automapgen/
     industries.py     IndustrySettings (a preset value), WorkGrid, SiteMaps, IndustryRules, IndustryList;
                       game.industry_rules (the game's industry files), industries.resource_areas,
                       industries.plan (placement, demand, names, import files)
-    roads/            road network between towns and industries (ADR 0016). plan.py: RoadPlan (nodes with game
-                      height, ways normal/bridge/tunnel); lattice.py: LatticeGraph (heading lattice: minimum radius,
-                      grade cost, structure moves); alignment.py: AlignmentBuilder (straights + arcs); profile.py:
-                      ProfilePlanner (grade-limited profile, bridges/tunnels); network.py: roads.network (links,
+    roads/            road network between towns and industries (ADR 0016, 0018). plan.py: RoadPlan (nodes with
+                      game height, ways normal/bridge/tunnel); lattice.py: LatticeGraph (heading lattice: minimum
+                      radius, grade and climb cost, straight structure moves: bridge/fill/cut/tunnel by height);
+                      alignment.py: AlignmentBuilder (straights + arcs); profile.py: ProfilePlanner (where = the
+                      structure legs; how = straight spans at a constant grade, fitted approaches, smooth normal
+                      profile within fill and cut); network.py: roads.network (links,
                       spurs, sections, junctions, plan, terrain shaped under the normal ways, preview)
     opentopography.py DemDownload, OpenTopography: the crop of an elevation model downloaded once into the download
                       folder (used by elevation.read and elevation.read_on_map without a path)

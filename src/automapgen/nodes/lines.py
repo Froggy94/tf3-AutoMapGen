@@ -549,29 +549,67 @@ class LineStamp:
 
     def stamp(self, x: FloatMap, y: FloatMap, target: FloatMap, half: FloatMap, blend: FloatMap | float,
               cosine: bool) -> tuple[FloatMap, FloatMap]:
-        """Weighted target height and maximum weight per pixel."""
+        """Weighted target height and maximum weight per pixel. Samples are stamped in groups of the same reach, so a
+        few wide samples (a deep cut) do not widen the stamp of all others."""
         width, height = self._width, self._height
-        reach = math.ceil(np.max(half + blend))
         n_px = width * height
-        tsum = np.zeros(n_px, np.float64)
-        wsum = np.zeros(n_px, np.float64)
-        wmax = np.zeros(n_px, np.float32)
-        cx, cy = np.round(x).astype(np.int64), np.round(y).astype(np.int64)
-        for dy in range(-reach, reach + 1):
-            for dx in range(-reach, reach + 1):
-                qx, qy = cx + dx, cy + dy
-                d = np.hypot(qx - x, qy - y)
-                w = np.clip((half + blend - d) / blend, 0, 1)
-                ok = (w > 0) & (qx >= 0) & (qx < width) & (qy >= 0) & (qy < height)
-                wk = w[ok]
-                if cosine:
-                    wk = 0.5 - 0.5 * np.cos(np.pi * wk)
-                flat = qy[ok] * width + qx[ok]
-                tsum += np.bincount(flat, weights=wk * target[ok], minlength=n_px)
-                wsum += np.bincount(flat, weights=wk, minlength=n_px)
-                np.maximum.at(wmax, flat, wk.astype(np.float32))
+        sums = _StampSums(n_px)
+        half_all = np.broadcast_to(np.asarray(half, dtype=np.float64), x.shape)
+        blend_all = np.broadcast_to(np.asarray(blend, dtype=np.float64), x.shape)
+        reach_all = np.ceil(half_all + blend_all).astype(np.int64)
+        for reach in np.unique(reach_all).tolist():
+            group = reach_all == reach
+            gx, gy, gt, gh, gb = x[group], y[group], target[group], half_all[group], blend_all[group]
+            cx, cy = np.round(gx).astype(np.int64), np.round(gy).astype(np.int64)
+            for dy in range(-reach, reach + 1):
+                for dx in range(-reach, reach + 1):
+                    qx, qy = cx + dx, cy + dy
+                    d = np.hypot(qx - gx, qy - gy)
+                    w = np.clip((gh + gb - d) / gb, 0, 1)
+                    ok = (w > 0) & (qx >= 0) & (qx < width) & (qy >= 0) & (qy < height)
+                    wk = w[ok]
+                    if cosine:
+                        wk = 0.5 - 0.5 * np.cos(np.pi * wk)
+                    sums.add(qy[ok] * width + qx[ok], wk, gt[ok])
+        tsum, wsum, wmax = sums.totals()
         weighted = (tsum / np.maximum(wsum, 1e-9)).reshape(height, width).astype(np.float32)
         return weighted, wmax.reshape(height, width)
+
+
+class _StampSums:
+    """Per pixel: sum of weight x target, sum of weights, largest weight. Contributions are collected and added up in
+    batches (one pass over all pixels per batch, not per stamp offset)."""
+
+    BATCH = 4_000_000
+
+    def __init__(self, n_px: int) -> None:
+        self._n = n_px
+        self._tsum = np.zeros(n_px, np.float64)
+        self._wsum = np.zeros(n_px, np.float64)
+        self._wmax = np.zeros(n_px, np.float32)
+        self._parts: list[tuple[NDArray[np.int64], NDArray[np.float64], NDArray[np.float64]]] = []
+        self._size = 0
+
+    def add(self, flat: NDArray[np.int64], weight: NDArray[Any], target: NDArray[Any]) -> None:
+        self._parts.append((flat, weight, target))
+        self._size += len(flat)
+        if self._size >= self.BATCH:
+            self._flush()
+
+    def totals(self) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float32]]:
+        self._flush()
+        return self._tsum, self._wsum, self._wmax
+
+    def _flush(self) -> None:
+        if not self._parts:
+            return
+        flat = np.concatenate([p[0] for p in self._parts])
+        weight = np.concatenate([p[1] for p in self._parts])
+        target = np.concatenate([p[2] for p in self._parts])
+        self._tsum += np.bincount(flat, weights=weight * target, minlength=self._n)
+        self._wsum += np.bincount(flat, weights=weight, minlength=self._n)
+        np.maximum.at(self._wmax, flat, weight.astype(np.float32))
+        self._parts, self._size = [], 0
 
 
 def _concat(parts: Sequence[NDArray[np.float64]]) -> FloatMap:

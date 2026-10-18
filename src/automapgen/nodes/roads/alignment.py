@@ -3,7 +3,7 @@
 The cell centres of the route become a polyline; straight runs that zigzag between neighbouring headings are
 straightened (as long as every corner still leaves room for the minimum radius), then every corner is rounded by
 the largest arc that fits between the middles of its two legs. Structure moves (bridges, tunnels) stay straight
-legs. Lengths in game metres.
+legs; an arc belongs to a structure only between two structure legs. Lengths in game metres.
 """
 
 from __future__ import annotations
@@ -100,7 +100,7 @@ class AlignmentBuilder:
             flags += [structure[i - 1]] * (len(straight) - 1)
             arc = _arc(exit_in, b, entry_out, self._step)
             out.append(arc[1:])
-            flags += [structure[i - 1] or structure[i]] * (len(arc) - 1)      # an arc at a structure is part of it
+            flags += [structure[i - 1] and structure[i]] * (len(arc) - 1)     # structures are straight
             entry = entry_out
         points = np.concatenate(out)
         keep = np.concatenate([[True], np.hypot(*np.diff(points, axis=0).T) > 1e-6])
