@@ -7,6 +7,9 @@ Verified in game, log or game files unless marked *unverified*. Taken over from 
 - 4 game metres per heightmap pixel (5121 px -> 20480 m). Map size presets in tiles of 256 m
   (`gui/menu/new_game_or_map_settings_page.tl`).
 - Import: minimum height and water height are entered by hand; water height 0 = reference height.
+- Import: with the computed minimum height ((black - reference) / scale) the water lies too high; +3 game m fits
+  (e.g. -20 -> -17; verified by the user in game, several maps, 2026-10-18). The GUI shows the raised value
+  (`app/gui/summary.py`, `MIN_HEIGHT_RAISE_GAME_M`). Cause *unverified*.
 - Biome PNG: 8-bit grey 0/63/127/191/255 = biome ID 0–4; biome 0 is computed by the game from height.
 - At most 12 import layers (IDs 0–11, including the original `mountains`/`rivers`); higher IDs are silently ignored.
   The game samples layers coarser than 4 m (exact resolution unknown). Layer resolution 1 or 2 -> crash

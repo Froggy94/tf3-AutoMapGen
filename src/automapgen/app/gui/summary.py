@@ -9,6 +9,10 @@ from typing import Any
 
 from automapgen.graph.paramsets import ParameterSet
 
+MIN_HEIGHT_RAISE_GAME_M = 3.0
+"""Added to the computed minimum height of the import dialog: with the exact value the water lies too high in the game
+(user, tested in game 2026-10-18; docsAI/notes/tf3_facts.md)."""
+
 _PREVIEWS = ("_biome_preview.png", "_landcover_preview.png", "_crops_preview.png", "_rivers_preview.png",
              "_rivers_valley_preview.png", "_towns_preview.png", "_industries_preview.png", "_paths_preview.png")
 
@@ -33,7 +37,9 @@ class ImportSummary:
         return {
             "map": name,
             "mods": sorted(p.name for p in mods.iterdir()) if mods.is_dir() else [],
-            "min_game": None if heights is None else (heights["black_m"] - heights["min_height_m"]) / scale,
+            "min_game": None if heights is None
+            else (heights["black_m"] - heights["min_height_m"]) / scale + MIN_HEIGHT_RAISE_GAME_M,
+            "min_raise_game": MIN_HEIGHT_RAISE_GAME_M,
             "max_game": None if heights is None else (heights["max_height_m"] - heights["min_height_m"]) / scale,
             "max_real": None if heights is None else heights["max_height_m"],
             "files": [(label, file, (folder / file).is_file()) for label, file in files],

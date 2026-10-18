@@ -15,12 +15,14 @@ from automapgen.app.gui.graph_view import GraphView
 from automapgen.app.gui.run import GenerationRun, MapJob
 from automapgen.app.gui.server import LocalHttpServer, PortInUseError
 from automapgen.app.gui.settings import GuiPaths, GuiSettings
+from automapgen.app.gui.summary import MIN_HEIGHT_RAISE_GAME_M, ImportSummary
 from automapgen.app.local_settings import LocalSettings
 from automapgen.app.map_sizes import MapSizeCatalog
 from automapgen.app.projects import ProjectStore
 from automapgen.app.toml_writer import TomlWriter
 from automapgen.graph.catalog import NodeCatalog
 from automapgen.graph.library import FolderLibrary
+from automapgen.graph.paramsets import ParameterSet
 from automapgen.graphs import GRAPHS_DIR
 from automapgen.nodes import BUILTIN_MODULES
 
@@ -137,3 +139,16 @@ def test_a_second_gui_on_the_same_port_is_refused() -> None:
             LocalHttpServer.at(first.server_address[1], BaseHTTPRequestHandler)
     finally:
         first.server_close()
+
+
+def test_import_summary_raises_the_minimum_height_so_the_water_is_not_too_high(tmp_path: Path) -> None:
+    folder = tmp_path / "Map"
+    folder.mkdir()
+    (folder / "Map_height_range.json").write_text(
+        '{"black_m": 509.2, "min_height_m": 549.2, "max_height_m": 2787.0}', encoding="utf-8")
+
+    summary = ImportSummary(tmp_path).build(ParameterSet(params={"map_name": "Map", "scale": 2}))
+
+    assert MIN_HEIGHT_RAISE_GAME_M == 3
+    assert summary["min_game"] == pytest.approx(-17)
+    assert summary["max_game"] == pytest.approx((2787.0 - 549.2) / 2)

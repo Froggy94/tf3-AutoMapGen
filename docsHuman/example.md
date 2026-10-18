@@ -210,7 +210,8 @@ mod that names every industry after the nearest town, including industries found
 
 If `user_data_folder` is set, the run copies the heightmap to `heightmaps`, the biome map and the layers to
 `biomes`, the import file to `towns_industries` and the mods to the game's mod staging area. The GUI then shows the
-values for the import dialog: minimum and maximum height in game metres (here about -20 and 1,119), water height 0.
+values for the import dialog: minimum and maximum height in game metres (here -17 and 1,119), water height 0. The minimum height is the
+computed value (-20) plus 3 m: with the exact value the water lies too high in the game.
 
 1. Activate the climate mod and the map mods, and open the map editor with the climate
    *DHE Alpine Realistic 500m Scale 0.5 BETA* and the map size *Medium*, format 1:1.

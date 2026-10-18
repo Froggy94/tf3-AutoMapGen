@@ -619,7 +619,7 @@ function showResult(r) {
   const n = v => v === null || v === undefined ? '–' : fmt(v, 1);
   let h = `<table>
     <tr><td>Climate</td><td>${r.mods.map(esc).join('<br>') || '–'} <span class="info">(mods)</span></td></tr>
-    <tr><td>Minimum height</td><td><b>${n(r.min_game)}</b></td></tr>
+    <tr><td>Minimum height</td><td><b>${n(r.min_game)}</b> <span class="info">(computed value + ${n(r.min_raise_game)}: with the exact value the water lies too high)</span></td></tr>
     <tr><td>Maximum height</td><td><b>${n(r.max_game)}</b>${r.max_real ? ` (highest point ${fmt(r.max_real, 0)} m a.s.l.)` : ''}</td></tr>
     <tr><td>Water level</td><td><b>0</b></td></tr>`;
   for (const [label, file, ok] of r.files) h += `<tr><td>${esc(label)}</td><td${ok ? '' : ' class="info"'}>${esc(file)}${ok ? '' : ' (missing)'}</td></tr>`;
