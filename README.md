@@ -87,6 +87,16 @@ For AI assistants:
   glossary, architecture decisions ([adr/](docsAI/adr/)) and verified knowledge about the game
   ([notes/tf3_facts.md](docsAI/notes/tf3_facts.md)).
 
+## ❤️ Support the Project
+
+tf3-AutoMapGen is a free, open-source project developed in my spare time.
+
+If you enjoy the project and would like to support its continued development, you can make a voluntary donation.
+
+❤️ **[Donate via PayPal](https://paypal.me/DHEFroggy94)**
+
+Every contribution is greatly appreciated. Thank you!
+
 ## Goal
 
 **Skeleton maps that reproduce the environment of a real region in TF3 as realistically as possible:** the terrain,
