@@ -6,13 +6,12 @@ extends = ["../presets/alpine_realistic.toml"]
 
 [defaults.transition]
 name = "Alpine North-South"
-replaces_original_layer = "rivers"            # the base climate's river layer is unused; the mask takes its slot 0
 zone = { kind = "gradient", start_lat = 47.27, end_lat = 46.716 }   # Inn valley at Innsbruck -> Brixen
 
 [defaults.transition.layer]
 key = "transition_mask"
 color = [0.95, 0.6, 0.2]
-slot = 0
+slot = 0                                        # free: the preset leaves the river layer out
 resolution = 16
 
 [defaults.transition.mix]

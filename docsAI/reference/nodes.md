@@ -1964,7 +1964,6 @@ A second look on part of the map: the secondary preset is the primary one with t
 - `secondary` (table, required): Differences of the secondary preset to the primary one.
 - `zone` ([GradientZone](#gradientzone), required): Where the secondary look applies.
 - `layer` ([TransitionLayer](#transitionlayer), required): Import layer of the transition mask.
-- `replaces_original_layer` (string, required): Original layer of the base climate whose slot the mask takes.
 - `mix` ([PatchMix](#patchmix) \| [SoftMix](#softmix) \| [OverlayMix](#overlaymix), required): How the two looks are mixed.
 - `surfaces` (table of [SurfaceTransition](#surfacetransition), required): Surfaces that change, by key, and their shares.
 

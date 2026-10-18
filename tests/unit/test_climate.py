@@ -72,7 +72,7 @@ def test_transition_secondary_is_the_primary_with_differences() -> None:
     landscape = Landscape(primary, Transition.model_validate(landscape_file["transition"]))
 
     assert landscape.name == "Alpine North-South"
-    assert landscape.primary.slots.original == {"mountains": 1}            # the mask took the rivers' slot 0
+    assert landscape.primary.slots.original == {"mountains": 1}            # the mask uses the free slot 0
     assert list(landscape.primary.slots.layers)[-1] == "transition_mask"
     assert landscape.secondary is not None
     south = landscape.secondary.surfaces
@@ -86,8 +86,9 @@ def test_transition_problems() -> None:
     transition = _defaults("landscapes/brenner_north_south.toml")["transition"]
     primary = _preset()
 
-    with pytest.raises(ValueError, match="no original layer"):
-        Landscape(primary, Transition.model_validate({**transition, "replaces_original_layer": "lakes"}))
+    on_mountains = {**transition, "layer": {**transition["layer"], "slot": 1}}
+    with pytest.raises(ValueError, match="slots are used twice"):
+        Landscape(primary, Transition.model_validate(on_mountains))
     desert = {"desert": {"factor": {"default": 1}}}
     with pytest.raises(ValueError, match="must exist in both presets"):
         Landscape(primary, Transition.model_validate({**transition, "surfaces": desert}))

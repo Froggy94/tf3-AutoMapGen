@@ -70,7 +70,7 @@ tree_line = 2100
 mountains_min = 1000
 
 [defaults.climate.slots]
-original = { rivers = 0, mountains = 1 }
+original = { mountains = 1 }                    # the base climate's river layer (slot 0) is not used: left out
 
 [defaults.climate.slots.layers.forest]
 color = [0.1, 0.45, 0.15]

@@ -598,8 +598,6 @@ class Transition(_Value):
     """Where the secondary look applies."""
     layer: TransitionLayer
     """Import layer of the transition mask."""
-    replaces_original_layer: str
-    """Original layer of the base climate whose slot the mask takes."""
     mix: MixSpec
     """How the two looks are mixed."""
     surfaces: Named[SurfaceTransition]
@@ -608,7 +606,7 @@ class Transition(_Value):
 
 class Landscape:
     """What a map's climate uses: the primary preset, optionally a secondary one with a transition. With a transition
-    the primary preset gets the mask layer on the slot of the original layer it replaces."""
+    the primary preset gets the mask layer (on a free slot)."""
 
     def __init__(self, primary: ClimatePreset, transition: Transition | None = None) -> None:
         self.transition = transition
@@ -626,12 +624,6 @@ class Landscape:
 
     @staticmethod
     def _with_mask_layer(preset: ClimatePreset, transition: Transition) -> ClimatePreset:
-        original = dict(preset.slots.original)
-        replaced = transition.replaces_original_layer
-        if replaced not in original:
-            raise ValueError(f"transition: {replaced!r} is no original layer of the preset")
-        if original.pop(replaced) != transition.layer.slot:
-            raise ValueError("transition: the mask layer must use the slot of the replaced original layer")
         layer = LayerSpec(**transition.layer.model_dump(exclude={"key"}))
-        slots = SlotPlan(layers={**preset.slots.layers, transition.layer.key: layer}, original=original)
+        slots = SlotPlan(layers={**preset.slots.layers, transition.layer.key: layer}, original=preset.slots.original)
         return preset.model_copy(update={"slots": slots})

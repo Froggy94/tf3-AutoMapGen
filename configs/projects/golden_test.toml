@@ -26,6 +26,10 @@ town_min_distance_game_m = 800
 [nodes."terraforming/rivers_and_water/river_valley"]
 max_move_real_m = 0                     # painted rivers on the OSM course like the legacy project (comparison)
 
+# The base climate's river layer as in the legacy project (comparison; the preset leaves it out since 2026-10-18)
+[defaults.climate.slots]
+original = { rivers = 0, mountains = 1 }
+
 # Alpine ground as in the legacy project (comparison; the preset changed it 2026-10-17): subarctic grass with alpine
 # grass and rock patches instead of alpine grass with subarctic grass and scree patches
 [defaults.climate.surfaces.alpine_ground.look]

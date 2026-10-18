@@ -58,6 +58,9 @@ NOT_COMPARED = {
     f"{PROJECT}_roads_plan.json": "road network redesigned (ADR 0016): junctions, node heights",
     f"{PROJECT}_roads_plan.png": "road network redesigned (ADR 0016): no gaps at branches",
 }
+RENAMED = {   # legacy name -> name here
+    f"{PROJECT}_industries_staedte.lua": f"{PROJECT}_industries_towns_only.lua",   # English name (2026-10-18)
+}
 NOT_COMPARED_MODS = {
     "DHE_goldentest_roads/": "road network redesigned (ADR 0016): the mod builds heights, structures, junctions",
     "DHE_goldentest_path_streets/content/dhe_path_streets/dhe_path_streets.script.lua":
@@ -130,6 +133,11 @@ def compared_files(legacy_folder: Path) -> list[str]:
     """The files of a legacy output folder a map graph must reproduce."""
     return sorted(p.name for p in legacy_folder.iterdir() if p.name not in NOT_COMPARED) \
         if legacy_folder.is_dir() else []
+
+
+def our_name(legacy_name: str) -> str:
+    """The name of a legacy output file here."""
+    return RENAMED.get(legacy_name, legacy_name)
 
 
 def compared_mod_files(legacy_mods: Path) -> list[str]:

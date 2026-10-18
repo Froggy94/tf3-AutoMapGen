@@ -24,6 +24,7 @@ from tests.comparison.legacy import (
     compared_files,
     compared_mod_files,
     legacy_available,
+    our_name,
     run_graph,
     run_legacy,
 )
@@ -55,7 +56,7 @@ def legacy_parcels(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.mark.parametrize("name", compared_files(GOLDEN))
 def test_map_equals_legacy_golden_master(map_run: Path, name: str) -> None:
-    assert_file_equal(map_run / name, GOLDEN / name)
+    assert_file_equal(map_run / our_name(name), GOLDEN / name)
 
 
 @pytest.mark.parametrize("path", compared_mod_files(GOLDEN_MODS))
@@ -75,7 +76,7 @@ def test_map_waterfall_preview_equals_legacy_golden_master(map_run: Path) -> Non
 @pytest.mark.parametrize("name", [*compared_files(GOLDEN), f"{PROJECT}_parcels.json"])
 def test_map_parcels_equals_legacy(parcels_run: Path, legacy_parcels: Path, name: str) -> None:
     assert (legacy_parcels / name).is_file(), f"the legacy run did not write {name}"
-    assert_file_equal(parcels_run / name, legacy_parcels / name)
+    assert_file_equal(parcels_run / our_name(name), legacy_parcels / name)
 
 
 @pytest.mark.parametrize("path", compared_mod_files(GOLDEN_MODS))

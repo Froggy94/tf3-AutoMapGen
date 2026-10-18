@@ -6,7 +6,7 @@ update that renames nodes only affects the adapter; unknown names fail loudly th
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from typing import ClassVar, Protocol
 
@@ -68,7 +68,8 @@ class ClimateAdapter(Protocol):
     def extend_rock_and_scree(self, material: NodeTree, factory: NodeFactory,
                               rock_layer: Port) -> dict[str, Port]: ...
 
-    def neutralize_original_layer(self, imports: NodeTree, factory: NodeFactory, key: str) -> None: ...
+    def neutralize_unused_original_layers(self, imports: NodeTree, factory: NodeFactory,
+                                          kept: Collection[str]) -> None: ...
 
     def connect_forest_floor(self, material: NodeTree, forest: Port) -> None: ...
 
@@ -199,13 +200,15 @@ class TemperateAdapter:
         material.node(self.scree_output).set_input("material", scree)
         return {"rock": rock, "scree": scree}
 
-    def neutralize_original_layer(self, imports: NodeTree, factory: NodeFactory, key: str) -> None:
-        """The original nodes reading an original layer get an empty map (its slot is used by an own layer)."""
-        if key not in self.original_layer_consumers:
-            raise ValueError(f"original layer {key!r} cannot be replaced in {self.base_climate}")
-        zero = factory.constant(f"no {key}", 0)
-        for node, slot in self.original_layer_consumers[key]:
-            imports.node(node).set_input(slot, zero)
+    def neutralize_unused_original_layers(self, imports: NodeTree, factory: NodeFactory,
+                                          kept: Collection[str]) -> None:
+        """The original nodes reading an original layer the preset leaves out (`kept`: the preset's original layers)
+        get an empty map, so they do not depend on a layer the import dialog no longer offers."""
+        for key, consumers in self.original_layer_consumers.items():
+            if key not in kept:
+                zero = factory.constant(f"no {key}", 0)
+                for node, slot in consumers:
+                    imports.node(node).set_input(slot, zero)
 
     def connect_forest_floor(self, material: NodeTree, forest: Port) -> None:
         material.node(self.forest_ground_output).set_input("material", forest)

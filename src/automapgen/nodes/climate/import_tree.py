@@ -75,8 +75,7 @@ class ImportTreeBuilder:
 
     def build(self) -> None:
         f, p = self._f, self._preset
-        if self._landscape.transition is not None:
-            self._adapter.neutralize_original_layer(self._tree, f, self._landscape.transition.replaces_original_layer)
+        self._adapter.neutralize_unused_original_layers(self._tree, f, p.slots.original)
         forest = self._layers.binary("forest bin", "forest")
         water = self._layers.binary("water bin", "water")
         shore = self._layers.binary("shore bin", "shore")

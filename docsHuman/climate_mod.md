@@ -70,8 +70,9 @@ layer the climate declares. The game stretches every image to the map size.
   by hand; tf3-AutoMapGen prints the values after every run.
 - **Biome map:** 8-bit grey, grey values 0 / 63 / 127 / 191 / 255 for biomes 0-4. Biome 0 is computed by the game
   from the height; tf3-AutoMapGen writes biomes 1-4.
-- **Import layers:** black-and-white PNGs. The temperate climate declares two (`rivers`, `mountains`). Every further
-  entry in `dataMaps.layers` of the climate definition adds a field to the import dialog.
+- **Import layers:** black-and-white PNGs. The temperate climate declares two (`rivers`, `mountains`); the climate mod
+  keeps `mountains` and leaves `rivers` out (unused). Every further entry in `dataMaps.layers` of the climate
+  definition adds a field to the import dialog.
 
 How the game treats layers (all checked in the game):
 
@@ -85,7 +86,7 @@ The layers of the preset *Alpine Realistic* (the key is also the file name `<map
 
 | Slot | Layer | Source |
 |---|---|---|
-| 0 | `rivers` (original), or `transition_mask` on maps with a transition | the area where the second look has begun |
+| 0 | `transition_mask` on maps with a transition (the base climate's `rivers` layer is left out) | the area where the second look has begun |
 | 1 | `mountains` (original) | mountain mask from the heights |
 | 2 | `forest` | WorldCover tree cover, minus water, river beds and gaps along paths and roads |
 | 3 | `meadow` | WorldCover grassland, shrubland, built-up area, wetland, moss; cropland without an OSM field |
