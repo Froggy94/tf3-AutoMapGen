@@ -15,3 +15,4 @@ scale = 2                                        # 1:2 - one game metre stands f
 rotation_deg = 0
 water_sink_m = 40
 max_towns = 32
+town_min_distance_game_m = 1500                  # default 3500 leaves only 4 towns on this map

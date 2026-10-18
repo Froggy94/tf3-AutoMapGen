@@ -46,6 +46,7 @@ scale = 2                                        # 1:2 - one game metre stands f
 rotation_deg = 0
 water_sink_m = 40
 max_towns = 32
+town_min_distance_game_m = 1500                  # default 3500 leaves only 4 towns on this map
 ```
 
 A map can also change its look across the map: a *landscape* sits between preset and project. The larger project
@@ -133,15 +134,15 @@ which land can be built on.
 - `paths.plan` selects field tracks (paved ones; in forests and towns only main tracks) and hiking paths from
   OpenStreetMap; `roads.from_osm` selects the country roads. Both are lines that are worked into the terrain later.
   Previews: `Innsbruck_Example_paths_preview.png`, `Innsbruck_Example_roads_osm_preview.png`.
-- `towns.plan` places up to **32 towns** at OpenStreetMap places with a population, largest first, at least 3.5 game
-  km apart (the default), on buildable land - dry, gently sloped, no rock or glacier - moving a town to a suitable spot
-  nearby if necessary. The start size follows the real population. With this distance the map gets 4 towns:
-  Innsbruck, Hall in Tirol, Axams and Mieders; the villages close to them are skipped (a smaller
-  `town_min_distance_game_m` gives more towns). Output: entries of the import file and
-  `Innsbruck_Example_towns_preview.png`.
+- `towns.plan` places up to **32 towns** at OpenStreetMap places with a population, largest first, at least 1.5 game
+  km apart, on buildable land - dry, gently sloped, no rock or glacier - moving a town to a suitable spot nearby if
+  necessary. The start size follows the real population. Here the map gets **10 towns**, from the city Innsbruck to
+  the village Patsch; 15 smaller places lie too close to one of them. The default distance of 3.5 game km would leave
+  only 4 towns on a map of this size, so the project sets `town_min_distance_game_m`. Output: entries of the import
+  file and `Innsbruck_Example_towns_preview.png`.
 - `industries.resource_areas` finds building sites and resource areas in the terrain as the game will see it (forest
   for forestry, rock for quarries, flat land for farms and others). `industries.plan` places raw-material industries
-  in the resource areas and processing industries near medium and large towns - here 20 industries. It uses the
+  in the resource areas and processing industries near medium and large towns - here 25 industries. It uses the
   production rules read from the game's own industry files (`game.industry_rules`) and names each industry after the
   nearest place. Output: `Innsbruck_Example_industries.lua` (towns with their demand, and industries),
   `Innsbruck_Example_industries_towns_only.lua` (only the towns, for placing industries by hand) and previews of
