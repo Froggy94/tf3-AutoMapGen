@@ -217,7 +217,7 @@ class _Planned:
 class RiverParams(NodeParams):
     real_water_until_m: float | None = param(None, unit="m")
     """Real water (game water) only up to this height above sea level (the region's "real water up to"); None = 120 m
-    above the lowest land."""
+    above the lowest land. Higher = more real water, but real water is cut down to the water line (deep trenches)."""
     min_real_run_game_m: float = param(1000.0, ge=0, unit="game m")
     """Shorter connected pieces where real water is possible do not count (tolerance)."""
     min_width_game_m: float = param(60.0, gt=0, unit="game m")

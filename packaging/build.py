@@ -14,8 +14,8 @@ from importlib import metadata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-FOLDERS = ("configs", "assets", "schemas", "docsHuman", "docsAI/reference")
-FILES = ("LICENSE", "NOTICE", "README.md", "CHANGELOG.md", "docsAI/glossary.md")   # glossary: linked by the reference
+FOLDERS = ("configs", "assets", "schemas", "docsHuman", "docsAI")   # docsAI: README and docs link into it
+FILES = ("LICENSE", "NOTICE", "README.md", "CHANGELOG.md")
 EXAMPLE_PROJECTS = ("innsbruck_example.toml",)   # other files in configs/projects are the developers' test projects
 LICENSE_NAME = re.compile(r"(LICEN[CS]E|COPYING|NOTICE|AUTHORS)", re.IGNORECASE)
 

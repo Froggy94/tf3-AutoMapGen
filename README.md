@@ -57,11 +57,11 @@ and the file to change, and say what you want:
 - "Here is my preset and the AI reference. Move the tree line to 1,900 m and make the alpine meadows drier."
 - "Make a landscape for my project that changes from the Alpine look in the north to the southern look in the south,
   like `brenner_north_south.toml`."
-- "My map has too many small towns. Which settings change that?"
+- "My map has too many small towns. Which settings of `towns.plan` change that?"
 
 The reference lists every node, parameter and graph, generated from the code, so the assistant knows what exists.
-Keep a copy of a file before you let an assistant change it and check the result with a run; the page reports
-settings that do not fit before it starts. All settings are also in the GUI under *Advanced settings ...*.
+Keep a copy of a file before you let an assistant change it. The assistant can check a change without running it:
+`AutoMapGen.exe check --project <map>` in the program folder; the page reports the same problems before it starts. All settings are also in the GUI under *Advanced settings ...*.
 
 ## Documentation
 
@@ -166,6 +166,8 @@ data (typed values) --> nodes (pure functions) --> data ...
 Principles, graphs and how the classes work together: **[docsHuman/architecture.md](docsHuman/architecture.md)**.
 
 ## Quick start (developers)
+
+For the source code (not needed for the Windows program):
 
 ```
 git clone https://github.com/Froggy94/tf3-AutoMapGen.git

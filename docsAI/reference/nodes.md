@@ -1108,7 +1108,7 @@ Outputs: `plan: river_plan`, `preview: image`, `profiles: image`
 
 Parameters:
 
-- `real_water_until_m` (number \| none, default `null`, unit m): Real water (game water) only up to this height above sea level (the region's "real water up to"); None = 120 m above the lowest land.
+- `real_water_until_m` (number \| none, default `null`, unit m): Real water (game water) only up to this height above sea level (the region's "real water up to"); None = 120 m above the lowest land. Higher = more real water, but real water is cut down to the water line (deep trenches).
 - `min_real_run_game_m` (number, default `1000.0`, unit game m, >= 0): Shorter connected pieces where real water is possible do not count (tolerance).
 - `min_width_game_m` (number, default `60.0`, unit game m, > 0): Real water: width at least.
 - `max_width_game_m` (number, default `300.0`, unit game m, > 0): Real water: width at most (in lakes the water layer shapes, not the river).
@@ -1343,7 +1343,7 @@ Outputs: `heights: field`, `landcover: classes`, `core: mask`, `border: mask`, `
 
 Parameters:
 
-- `real_water_until_m` (number \| none, default `null`, unit m): Real water (game water) only up to this height above sea level (the region's "real water up to"); None = 120 m above the lowest land.
+- `real_water_until_m` (number \| none, default `null`, unit m): Real water (game water) only up to this height above sea level (the region's "real water up to"); None = 120 m above the lowest land. Higher = more real water, but real water is cut down to the water line (deep trenches).
 - `water_sink_m` (number, default `40.0`, unit m, >= 0): Core of real water this much below the water line (black of the heightmap).
 - `shore_class` (integer, default `200`, >= 0, <= 255): Own landcover class of the shore (not a WorldCover code).
 - `report_min_ha` (number, default `20.0`, unit ha, >= 0): Lakes from this size are listed in the log.

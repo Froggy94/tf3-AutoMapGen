@@ -135,7 +135,7 @@ class RealWaterParams(_Settings):
 class ShapeParams(NodeParams):
     real_water_until_m: float | None = param(None, unit="m")
     """Real water (game water) only up to this height above sea level (the region's "real water up to"); None = 120 m
-    above the lowest land."""
+    above the lowest land. Higher = more real water, but real water is cut down to the water line (deep trenches)."""
     water_sink_m: float = param(40.0, ge=0, unit="m")
     """Core of real water this much below the water line (black of the heightmap)."""
     shore_class: int = param(200, ge=0, le=255)

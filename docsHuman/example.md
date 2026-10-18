@@ -50,7 +50,8 @@ town_min_distance_game_m = 1500                  # default 3500 leaves only 4 to
 ```
 
 A map can also change its look across the map: a *landscape* sits between preset and project. The larger project
-[configs/projects/brenner.toml](../configs/projects/brenner.toml) (size Gigantic, Innsbruck to Bolzano) uses
+[configs/projects/brenner.toml](https://github.com/Froggy94/tf3-AutoMapGen/blob/main/configs/projects/brenner.toml)
+(in the repository; size Gigantic, Innsbruck to Bolzano) uses
 [configs/landscapes/brenner_north_south.toml](../configs/landscapes/brenner_north_south.toml), which turns the green
 northern Alps gradually into the drier southern look ([climate_mod.md](climate_mod.md)).
 
