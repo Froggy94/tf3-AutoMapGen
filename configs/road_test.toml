@@ -1,0 +1,44 @@
+# Road test mod (graph road_test): learn what the game does with given heights, bridge and tunnel edges, a junction to
+# an existing node and hairpins, before the road planning uses them. Not bound to a map; activate it in any game.
+#   automapgen run --set configs/road_test.toml
+# In game: build a short street of any type (not the test types); next to it (in the direction of the piece)
+# the mod builds T1 a straight line with a constant grade between the ground at both ends, with bridges/tunnels where
+# it lies far above/below the ground; T2 the same line 60 m to the left as normal street (the game's own cut and fill);
+# T3 a branch from the middle node of T2 (junction); T5 the same line another 60 m to the left as the steep street of
+# DHE_Walls_Tracks_Streets with retaining walls (that mod must be active); T4 hairpins of the radii to the right. Log:
+# local/crash_dump/stdout.txt, lines "[dhe_road_test]".
+graph = "road_test"
+extends = ["publishing.toml"]
+
+[params]
+map_name = "Dev"
+
+[defaults.map_mod_texts.road_test]
+title = "Road Test"
+summary = "Test roads next to a marker street (development)"
+description = "Builds test roads (given heights, bridges, tunnels, junction, hairpins, retaining walls) next to every street the player builds. For development only."
+
+[defaults.road_test]
+template = "street/country/country_new_small.street_template"
+walls_mod_id = "DHE_Walls_Tracks_Streets"
+steep_template = "street/dhe_slope/dhe_country_new_small_slope.street_template"
+# resource names: the game names its own as "::/infrastructure/edge_addons/barrier_b.edge" (street templates)
+lower_walls = ["/infrastructure/edge_addons/dhe_retaining_wall_stone_street.edge",
+               "DHE_Walls_Tracks_Streets::/infrastructure/edge_addons/dhe_retaining_wall_stone_street.edge",
+               "::/infrastructure/edge_addons/dhe_retaining_wall_stone_street.edge"]
+upper_walls = ["/infrastructure/edge_addons/dhe_retaining_wall_upper_stone_street.edge",
+               "DHE_Walls_Tracks_Streets::/infrastructure/edge_addons/dhe_retaining_wall_upper_stone_street.edge",
+               "::/infrastructure/edge_addons/dhe_retaining_wall_upper_stone_street.edge"]
+wall_from_m = 2
+bridge_types = ["::/infrastructure/bridge/concrete.bridge", "concrete.lua", "concrete.bridge", "cement.lua",
+                "::/infrastructure/bridge/stone.bridge"]
+tunnel_types = ["::/infrastructure/tunnel/tunnel_a_car.tunnel", "tunnel_a_car.lua", "tunnel_a_car.tunnel",
+                "::/infrastructure/tunnel/tunnel_a.tunnel"]
+bridge_above_m = 6
+tunnel_below_m = 10
+line_length_m = 600
+edge_length_m = 20
+line_offset_m = 60
+branch_length_m = 80
+radii_m = [8, 12, 16, 20, 30]
+leg_length_m = 100

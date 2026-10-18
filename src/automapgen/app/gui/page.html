@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tf3-AutoMapGen</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="/static/advanced.css">
+<script src="/static/advanced.js"></script>
+<style>
+  :root { --side: 380px; --console: 230px; --ok: #1a7f37; --bad: #c62828; --muted: #666; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.4 system-ui, sans-serif; background: #f4f4f4; color: #222; }
+  #side { position: absolute; top: 0; left: 0; bottom: var(--console); width: var(--side); overflow-y: auto;
+          padding: 10px 12px; background: #fff; border-right: 1px solid #ccc; }
+  #map { position: absolute; top: 0; left: var(--side); right: 0; bottom: var(--console); }
+  #console { position: absolute; left: 0; right: 0; bottom: 0; height: var(--console); background: #1e1e1e;
+             color: #ddd; font: 12px/1.35 Consolas, monospace; overflow-y: auto; padding: 6px 10px;
+             white-space: pre-wrap; border-top: 3px solid #444; }
+  h1 { font-size: 16px; margin: 0 0 8px; }
+  fieldset { border: 1px solid #ddd; border-radius: 6px; margin: 0 0 10px; padding: 6px 10px 8px; }
+  legend { font-weight: 600; padding: 0 4px; }
+  label { display: block; margin: 4px 0; }
+  .row { display: flex; gap: 6px; align-items: center; }
+  .row > * { flex: 1; }
+  .row > button { flex: 0 0 auto; }
+  input[type=text], input[type=number], select { width: 100%; padding: 3px 4px; }
+  input[type=range] { width: 100%; }
+  .info { color: var(--muted); font-size: 12px; margin: 3px 0; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); font-weight: 600; } .warn { color: #b26a00; }
+  button { padding: 5px 10px; cursor: pointer; }
+  #start { width: 100%; padding: 9px; font-weight: 700; font-size: 14px; background: #1a7f37; color: #fff;
+           border: 0; border-radius: 5px; margin-top: 4px; }
+  #start:disabled { background: #999; cursor: default; }
+  #save, #stop, #stopDel { width: 100%; margin-top: 4px; }
+  #stopDel { color: #c62828; }
+  #result table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  #result td { border-bottom: 1px solid #eee; padding: 2px 3px; vertical-align: top; }
+  #result td:first-child { white-space: nowrap; color: var(--muted); }
+  #previews img { width: 100%; margin-top: 6px; border: 1px solid #ccc; cursor: zoom-in; }
+  .c-err { color: #ff8080; } .c-head { color: #7fd4ff; font-weight: 700; } .c-warn { color: #ffcf66; }
+  #graphModal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 2000;
+                align-items: center; justify-content: center; }
+  #graphPanel { background: #fff; width: 96vw; height: 94vh; border-radius: 8px; display: flex; flex-direction: column;
+                overflow: hidden; }
+  #graphHead { display: flex; gap: 6px; align-items: center; padding: 8px 12px 4px; }
+  #graphCrumbs { flex: 1; font-size: 15px; font-weight: 600; }
+  #graphCrumbs a { color: #1565c0; text-decoration: none; }
+  #graphDesc { padding: 0 12px 6px; border-bottom: 1px solid #ddd; max-height: 4.5em; overflow-y: auto; }
+  #graphBody { flex: 1; overflow: auto; padding: 10px; background: #fafafa; }
+  #graphSvg svg { max-width: none; }
+  #graphSvg .node.sub rect, #graphSvg .node.sub polygon { cursor: pointer; }
+  #steps label { margin: 2px 0; }
+  #steps label[title] { cursor: help; }
+  #nosrv { display: none; background: #fff3cd; padding: 8px; border-radius: 5px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div id="side">
+  <h1>tf3-AutoMapGen</h1>
+  <div id="nosrv">The page needs its server: start <code>automapgen gui</code> (it opens the page itself).</div>
+
+  <fieldset><legend>Project</legend>
+    <div class="row">
+      <select id="projectList"></select>
+      <button id="load">Load</button>
+      <button id="new">New</button>
+    </div>
+    <label>Map name <input type="text" id="mapName" placeholder="e.g. Brenner"></label>
+    <div class="info" id="projectInfo"></div>
+    <label>Climate preset (or landscape) <select id="look"></select></label>
+    <label>Reference height = lowest land (m a.s.l.) <input type="number" id="minh" step="1"
+      placeholder="automatic: lowest point"></label>
+    <label>Climate mod: reference height rounded to (m) <input type="number" id="climStep" min="0" step="1"></label>
+    <div class="info" id="minInfo"></div>
+    <label>Graph <span class="row"><select id="graph"></select>
+      <button id="showGraph" title="The graph as diagram: subgraphs are boxes with a double border - click one to open it">Show graph</button></span></label>
+    <div class="info" id="graphInfo"></div>
+  </fieldset>
+
+  <fieldset><legend>Map</legend>
+    <label>Map size <select id="size"></select></label>
+    <label>Aspect ratio (width : height) <select id="format"></select></label>
+    <label>Scale <b id="scaleTxt"></b>
+      <input type="range" id="scale" min="0.1" max="1" step="0.001" value="0.5"></label>
+    <label class="row"><input type="checkbox" id="snap" checked style="flex:0">
+      <span>fixed steps</span></label>
+    <div class="info" id="mapInfo"></div>
+    <div class="info" id="areaWarn"></div>
+  </fieldset>
+
+  <fieldset><legend>Location</legend>
+    <div class="row">
+      <input type="text" id="q" placeholder="Search a place, e.g. Innsbruck">
+      <button id="search">Search</button>
+    </div>
+    <label>Top of the map points to <select id="rotation">
+      <option value="0">North (0°)</option><option value="90">East (90°)</option>
+      <option value="180">South (180°)</option><option value="270">West (270°)</option></select></label>
+    <div class="info">Drag the rectangle with the mouse; a double click sets the centre. The arrow shows where the
+      top of the map is in game.</div>
+    <div class="info" id="coords"></div>
+  </fieldset>
+
+  <fieldset><legend>Elevation data</legend>
+    <label class="row"><input type="radio" name="src" id="srcDownload" value="download" style="flex:0" checked>
+      <span>Download from OpenTopography</span></label>
+    <label class="row"><input type="radio" name="src" id="srcFile" value="file" style="flex:0">
+      <span>A GeoTIFF file</span></label>
+    <div id="downloadBox">
+      <label>Data set <select id="demType"></select></label>
+      <label>API key <span class="row"><input type="text" id="apiKey" autocomplete="off" spellcheck="false"
+        placeholder="paste to change"><button id="saveKey">Save</button></span></label>
+      <div class="info" id="keyInfo"></div>
+      <div class="info">The crop plus <span id="margin"></span> km margin is downloaded once into downloads/elevation/.
+        Free key: OpenTopography portal, "My Account" (without a university account 50 requests per day).</div>
+    </div>
+    <div id="fileBox" style="display:none">
+      <label>File (relative to the working folder) <span class="row"><input type="text" id="demPath">
+        <button id="checkTif">Check</button></span></label>
+    </div>
+    <div class="info" id="tifInfo"></div>
+    <label>Real water up to (m a.s.l.) <input type="number" id="realUntil" step="1"></label>
+    <div class="info" id="realInfo"></div>
+    <details><summary>More</summary>
+      <label>Water sink below the reference height (m) <input type="number" id="sink" step="1" value="40"></label>
+    </details>
+  </fieldset>
+
+  <fieldset><legend>Towns</legend>
+    <div class="row">
+      <label>Number (max.) <input type="number" id="townsMax" min="0" step="1"></label>
+      <label>Minimum distance km <input type="number" id="townsDist" min="0" step="0.1"></label>
+    </div>
+    <div class="info" id="townsInfo"></div>
+  </fieldset>
+
+  <fieldset><legend>Game folders</legend>
+    <label>Transport Fever 3 installation <input type="text" id="gameFolder" spellcheck="false"
+      placeholder="e.g. C:/Program Files (x86)/Steam/steamapps/common/Transport Fever 3"></label>
+    <label>User data folder of the game <input type="text" id="userData" spellcheck="false"
+      placeholder="e.g. C:/Program Files (x86)/Steam/userdata/&lt;number&gt;/3493540/local"></label>
+    <button id="saveFolders">Save</button>
+    <div class="info" id="foldersInfo"></div>
+    <div class="info">The installation is needed for the climate mod (it is built from the game's files). The user
+      data folder is optional: the results are copied into it (heightmaps, biomes, towns_industries, mods).</div>
+  </fieldset>
+
+  <fieldset><legend>Processing steps</legend>
+    <div id="steps"></div>
+    <label><input type="checkbox" id="copyGame"> Copy the files into the game</label>
+    <div class="info" id="stepsInfo">Each step computes what it needs (results of earlier runs come from the cache)
+      and writes only its own files.</div>
+  </fieldset>
+
+  <button id="advBtn" title="Every setting of the map, grouped by topic; only changes are stored in the project">Advanced settings ...</button>
+  <button id="save">Save project</button>
+  <button id="start">Generate</button>
+  <button id="stop" disabled>Cancel</button>
+  <button id="stopDel" disabled title="Cancels and deletes every file this run created or overwrote in the map's output folder and in the game's user data folder (not: downloads, cache, configs)">Cancel and delete the files of this run</button>
+  <div class="info" id="runInfo"></div>
+
+  <fieldset id="result" style="display:none; margin-top:10px"><legend>Import in the game</legend>
+    <div id="resultBody"></div>
+    <div id="previews"></div>
+  </fieldset>
+</div>
+<div id="map"></div>
+<div id="console">Ready.</div>
+<div id="graphModal">
+  <div id="graphPanel">
+    <div id="graphHead">
+      <span id="graphCrumbs"></span>
+      <button id="gZoomOut" title="smaller (Ctrl + mouse wheel)">-</button>
+      <button id="gZoomFit" title="fit the width">fit</button>
+      <button id="gZoomIn" title="larger (Ctrl + mouse wheel)">+</button>
+      <button id="graphClose">Close</button>
+    </div>
+    <div class="info" id="graphDesc"></div>
+    <div id="graphBody"><div id="graphSvg"></div></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 2) => (+v).toLocaleString('en-GB', { maximumFractionDigits: d });
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+let SETUP = null, projectId = null, doc = null, center = L.latLng(47.27, 11.39), fixedCrop = null;
+let tifBounds = null, cropMin = null, cropMax = null, logNext = 0, polling = null, restoring = true;
+const advanced = new AdvancedSettings({ api, project: () => doc, page: () => documentOfPage(), button: $('advBtn') });
+
+// ---------- map ----------
+const map = L.map('map', { doubleClickZoom: false }).setView(center, 10);
+L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+  maxZoom: 17, attribution: '© OpenStreetMap contributors, SRTM | © OpenTopoMap (CC-BY-SA)'
+}).addTo(map);
+const rect = L.rectangle([[0, 0], [0, 0]], { color: '#e33', weight: 2, fillOpacity: 0.15 }).addTo(map);
+const upArrow = L.polyline([[0, 0], [0, 0]], { color: '#222', weight: 3, interactive: false }).addTo(map);
+const upLabel = L.marker([0, 0], { interactive: false, icon: L.divIcon({ className: '', iconSize: [80, 18],
+  iconAnchor: [40, 9], html: '<div style="background:#222;color:#fff;font:600 11px system-ui;padding:1px 5px;' +
+  'border-radius:3px;text-align:center">▲ map top</div>' }) }).addTo(map);
+const tifRect = L.rectangle([[0, 0], [0, 0]], { color: '#1565c0', weight: 1.5, dashArray: '6 4', fill: false });
+
+// ---------- values ----------
+function scaleValue() {                     // 1:x
+  const v = +$('scale').value;
+  if ($('snap').checked) {
+    let best = SETUP.scale_steps[0];
+    for (const s of SETUP.scale_steps) if (Math.abs(1 / s - v) < Math.abs(1 / best - v)) best = s;
+    return best;
+  }
+  return Math.round(100 / v) / 100;
+}
+function gameKm() {                          // [width, height, tiles w, tiles h] of the game map
+  if ($('size').value === 'custom') {
+    const p = doc.params;
+    return [p.game_width_km, p.game_height_km, p.game_width_km * 1000 / SETUP.tile_m, p.game_height_km * 1000 / SETUP.tile_m];
+  }
+  const size = SETUP.sizes.find(s => s.key === $('size').value);
+  const [tw, th] = size.tiles[SETUP.formats.indexOf($('format').value)];
+  return [tw * SETUP.tile_m / 1000, th * SETUP.tile_m / 1000, tw, th];
+}
+const rotation = () => +$('rotation').value;
+const downloading = () => $('srcDownload').checked;
+// like the legacy GUI: width = dLon * 111.32 * cos(centre), height = dLat * 110.57; at 90/270° the map width runs
+// north-south. A loaded project keeps its crop until the map or the location changes.
+function crop() {
+  if (fixedCrop) return fixedCrop;
+  let [gw, gh] = gameKm();
+  const s = scaleValue();
+  if (rotation() % 180) [gw, gh] = [gh, gw];
+  const dLon = gw * s / 2 / (111.32 * Math.cos(center.lat * Math.PI / 180)), dLat = gh * s / 2 / 110.57;
+  const r = v => Math.round(v * 1e5) / 1e5;
+  return { west: r(center.lng - dLon), south: r(center.lat - dLat), east: r(center.lng + dLon), north: r(center.lat + dLat) };
+}
+function inside(b) {
+  if (downloading() || !tifBounds) return null;
+  const [x0, y0, x1, y1] = tifBounds;
+  return b.west >= x0 && b.east <= x1 && b.south >= y0 && b.north <= y1;
+}
+function changed() { fixedCrop = null; update(); }
+
+function update(fetchStats = true) {
+  if (!SETUP || !doc) return;
+  const s = scaleValue(), b = crop(), [gw, gh, tw, th] = gameKm();
+  if ($('snap').checked) $('scale').value = 1 / s;
+  $('scaleTxt').textContent = `1:${fmt(s)} (heights and distances, ${fmt(1 / s, 3)} game metres per real metre)`;
+  const area = gw * gh;
+  $('mapInfo').innerHTML = `Game map ${fmt(gw, 3)} × ${fmt(gh, 3)} km (${fmt(tw, 0)} × ${fmt(th, 0)} tiles, ` +
+    `${fmt(tw * SETUP.tile_px + 1, 0)} × ${fmt(th * SETUP.tile_px + 1, 0)} px), ${fmt(area, 0)} km²<br>` +
+    `Real crop: <b>${fmt(gw * s, 2)} × ${fmt(gh * s, 2)} km</b>`;
+  const auto = Math.round(area * SETUP.towns_per_100_km2 / 100);
+  $('townsMax').placeholder = auto;
+  $('townsDist').placeholder = fmt(SETUP.town_distance_game_m / 1000, 1);
+  $('townsInfo').textContent = `Empty = default: ${auto} towns for this map size (${fmt(SETUP.towns_per_100_km2, 1)} per 100 km²), largest first.`;
+  $('areaWarn').innerHTML = area > SETUP.large_km2 ?
+    '<span class="warn">Large map: the import needs a lot of memory (839 km² needed 32-45 GB).</span>' : '';
+  rect.setBounds([[b.south, b.west], [b.north, b.east]]);
+  const midLat = (b.south + b.north) / 2, midLng = (b.west + b.east) / 2;
+  const edge = { 0: [b.north, midLng], 90: [midLat, b.east], 180: [b.south, midLng], 270: [midLat, b.west] }[rotation()];
+  upArrow.setLatLngs([[midLat, midLng], edge]);
+  upLabel.setLatLng(edge);
+  const ins = inside(b);
+  rect.setStyle({ color: ins === false ? '#c62828' : (ins ? '#1a7f37' : '#e33') });
+  $('coords').textContent = `lon ${b.west.toFixed(5)} – ${b.east.toFixed(5)}, lat ${b.south.toFixed(5)} – ${b.north.toFixed(5)}`;
+  $('downloadBox').style.display = downloading() ? '' : 'none';
+  $('fileBox').style.display = downloading() ? 'none' : '';
+  if (downloading()) {
+    tifRect.remove();
+    $('tifInfo').innerHTML = SETUP.api_key_set ? '<span class="ok">The crop is downloaded when the run needs it.</span>' :
+      '<span class="bad">No API key saved.</span>';
+  } else if (tifBounds) {
+    $('tifInfo').innerHTML = ins ? '<span class="ok">The crop lies inside the file.</span>' :
+      '<span class="bad">The crop reaches out of the file (blue dashed)!</span>';
+  }
+  const minh = referenceHeight(), until = realUntil();
+  $('climStep').placeholder = SETUP.climate_reference_step_m;
+  $('realUntil').placeholder = minh == null ? `default: ${SETUP.real_water_above_m} m above the lowest point`
+                                            : `default ${fmt(minh + SETUP.real_water_above_m, 0)}`;
+  $('realInfo').innerHTML = minh == null || until == null ?
+    `Lakes and rivers up to <b>${SETUP.real_water_above_m} m</b> above the lowest point become real (game) water; ` +
+    'above that painted water.' :
+    until < minh ? '<span class="warn">Below the reference height: no real water.</span>' :
+    `Lakes and rivers with a level up to <b>${fmt(until, 0)} m</b> become real (game) water and are lowered to ` +
+    `${fmt(minh, 0)} m; above that painted water.`;
+  showReference();
+  if (fetchStats) statsLater();
+  validate();
+}
+// the heightmap's reference height: the field, else the lowest point of the crop (null while unknown)
+const referenceHeight = () => $('minh').value !== '' ? +$('minh').value : cropMin;
+const climateStep = () => $('climStep').value === '' ? SETUP.climate_reference_step_m : +$('climStep').value;
+const realUntil = () => $('realUntil').value !== '' ? +$('realUntil').value :
+  referenceHeight() == null ? null : referenceHeight() + SETUP.real_water_above_m;
+
+// the reference heights of heightmap and climate mod (same rounding as the node climate.reference)
+function showReference() {
+  const minh = referenceHeight(), step = climateStep();
+  if (minh == null) {
+    $('minInfo').textContent = downloading() && $('minh').value === '' ?
+      `Empty: the lowest point of the download (named in the console); the climate mod rounds it to ${step} m steps.` : '';
+    return;
+  }
+  const mod = step > 0 ? Math.floor(minh / step + 0.5) * step : minh;
+  const source = $('minh').value !== '' ? 'entered' : 'lowest point of the crop';
+  $('minInfo').innerHTML = `Heightmap: <b>${fmt(minh, 0)} m</b> (${source}); climate mod: <b>${fmt(mod, 0)} m</b>` +
+    (cropMin != null ? `<br>In the crop: lowest point ${fmt(cropMin, 0)} m, highest ${fmt(cropMax, 0)} m.` : '') +
+    (cropMin != null && cropMin < minh ?
+      `<br><span class="warn">Land below ${fmt(minh, 0)} m is raised to the reference height.</span>` : '');
+}
+
+let statsTimer = null;
+function statsLater() { clearTimeout(statsTimer); statsTimer = setTimeout(stats, 500); }
+async function stats() {
+  cropMin = cropMax = null;
+  if (downloading() || !$('demPath').value || inside(crop()) === false) return update(false);
+  try {
+    const r = await api(`/api/tif?path=${encodeURIComponent($('demPath').value)}&bounds=${encodeURIComponent(JSON.stringify(crop()))}`);
+    cropMin = r.min; cropMax = r.max;
+    update(false);
+  } catch (e) { $('minInfo').textContent = 'Heights not readable: ' + e; }
+}
+
+function validate() {
+  const src = downloading() ? SETUP.api_key_set : ($('demPath').value && inside(crop()) !== false);
+  const ok = SETUP && /^[A-Za-z0-9_-]+$/.test($('mapName').value.trim()) && src && chosenSteps().length > 0 &&
+             !graphProblems.length;
+  $('start').disabled = !ok || !$('stop').disabled;
+  $('save').disabled = !/^[A-Za-z0-9_-]+$/.test($('mapName').value.trim());
+}
+
+// ---------- server ----------
+async function api(url, body) {
+  const r = await fetch(url, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify(body) } : undefined);
+  const j = await r.json();
+  if (!r.ok) throw j.error || r.status;
+  return j;
+}
+
+// the page's values into the project document (other values of the project stay as they are)
+function documentOfPage() {
+  const p = { ...doc.params };
+  const [gw, gh] = gameKm();
+  Object.assign(p, {
+    map_name: $('mapName').value.trim(), crop: crop(), game_width_km: gw, game_height_km: gh, scale: scaleValue(),
+    rotation_deg: rotation(), water_sink_m: +$('sink').value
+  });
+  // empty fields = the nodes' defaults (lowest point, real water 120 m above it, rounding step)
+  for (const [key, id] of [['min_height_m', 'minh'], ['real_water_until_m', 'realUntil'],
+                           ['climate_reference_step_m', 'climStep']]) {
+    if ($(id).value === '') delete p[key]; else p[key] = +$(id).value;
+  }
+  if (downloading()) { delete p.dem_path; p.dem_download = { dem_type: $('demType').value }; }
+  else { delete p.dem_download; p.dem_path = $('demPath').value.trim(); }
+  if ($('townsMax').value === '') delete p.max_towns; else p.max_towns = +$('townsMax').value;
+  if ($('townsDist').value === '') delete p.town_min_distance_game_m;
+  else p.town_min_distance_game_m = Math.round(+$('townsDist').value * 1000);
+  return { ...doc, graph: $('graph').value || doc.graph || 'map', extends: [$('look').value], params: p };
+}
+
+// a project document onto the page
+async function showDocument(id, d) {
+  restoring = true;
+  projectId = id; doc = d; doc.params = doc.params || {};
+  showGraphChoice(doc.graph);
+  const p = doc.params;
+  $('mapName').value = p.map_name || '';
+  $('projectInfo').textContent = id ? `configs/projects/${id}.toml, output/${p.map_name || '?'}/` : 'new project (not saved yet)';
+  const found = SETUP.sizes.flatMap(s => SETUP.formats.map((f, i) => [s.key, f, s.tiles[i]]))
+    .find(([, , [tw, th]]) => Math.abs(tw * SETUP.tile_m / 1000 - p.game_width_km) < 1e-6 && Math.abs(th * SETUP.tile_m / 1000 - p.game_height_km) < 1e-6);
+  $('size').querySelector('option[value=custom]').disabled = !!found;
+  if (found) { $('size').value = found[0]; $('format').value = found[1]; }
+  else if (p.game_width_km) $('size').value = 'custom';
+  if (p.scale) { $('snap').checked = SETUP.scale_steps.includes(p.scale); $('scale').value = 1 / p.scale; }
+  $('rotation').value = String(p.rotation_deg || 0);
+  if (p.crop) {
+    fixedCrop = { ...p.crop };
+    center = L.latLng((p.crop.south + p.crop.north) / 2, (p.crop.west + p.crop.east) / 2);
+  } else fixedCrop = null;
+  $('minh').value = p.min_height_m ?? '';
+  $('climStep').value = p.climate_reference_step_m ?? '';
+  $('sink').value = p.water_sink_m ?? 40;
+  $('realUntil').value = p.real_water_until_m ?? '';
+  $('look').value = (doc.extends || [SETUP.default_look])[0];
+  if (!$('look').value) $('look').value = SETUP.default_look;
+  $('srcFile').checked = !!p.dem_path; $('srcDownload').checked = !p.dem_path;
+  $('demPath').value = p.dem_path || '';
+  if (p.dem_download) $('demType').value = p.dem_download.dem_type;
+  $('townsMax').value = p.max_towns ?? '';
+  $('townsDist').value = p.town_min_distance_game_m != null ? p.town_min_distance_game_m / 1000 : '';
+  $('projectList').value = id || '';
+  await loadTif();
+  advanced.refresh();
+  map.fitBounds(rect.getBounds(), { padding: [40, 40] });
+  restoring = false;
+  saveState();
+}
+
+async function loadProject() {
+  const id = $('projectList').value;
+  if (!id) return;
+  try {
+    const r = await api(`/api/project?id=${encodeURIComponent(id)}`);
+    await showDocument(r.id, r.doc);
+  } catch (e) { $('runInfo').innerHTML = `<span class="bad">Project not loaded: ${esc(e)}</span>`; }
+}
+
+function newProject() {
+  const c = map.getCenter();
+  center = c;
+  showDocument(null, { graph: 'map', extends: [SETUP.default_look], params: {
+    game_width_km: 11.264, game_height_km: 22.528, scale: 2, rotation_deg: 0, water_sink_m: 40 } });
+  fixedCrop = null;
+  center = c;
+  update();
+}
+
+async function loadTif() {
+  tifBounds = null;
+  tifRect.remove();
+  if (downloading() || !$('demPath').value) return update();
+  try {
+    const r = await api(`/api/tif?path=${encodeURIComponent($('demPath').value)}`);
+    tifBounds = r.bounds;
+    tifRect.setBounds([[r.bounds[1], r.bounds[0]], [r.bounds[3], r.bounds[2]]]).addTo(map);
+  } catch (e) { $('tifInfo').innerHTML = `<span class="bad">File not readable: ${esc(e)}</span>`; }
+  update();
+}
+
+let stateTimer = null;
+function saveState() {
+  if (restoring) return;
+  clearTimeout(stateTimer);
+  stateTimer = setTimeout(() => {
+    const c = map.getCenter();
+    api('/api/state', { project_id: projectId, view: { lat: c.lat, lng: c.lng, zoom: map.getZoom() },
+                        steps: chosenSteps(), copy_to_game: $('copyGame').checked }).catch(() => { });
+  }, 800);
+}
+
+async function refreshProjects() {
+  const s = await api('/api/setup');
+  SETUP.projects = s.projects;
+  $('projectList').innerHTML = '<option value="">– choose –</option>' +
+    s.projects.map(p => `<option value="${esc(p.id)}">${esc(p.map_name)} (${esc(p.id)})</option>`).join('');
+  $('projectList').value = projectId || '';
+}
+
+async function saveProject() {
+  try {
+    const r = await api('/api/save', { id: projectId, doc: documentOfPage() });
+    projectId = r.id; doc = documentOfPage();
+    await refreshProjects();
+    $('projectInfo').textContent = `saved: configs/projects/${r.id}.toml`;
+    saveState();
+  } catch (e) { $('runInfo').innerHTML = `<span class="bad">${esc(e)}</span>`; }
+}
+
+// ---------- graphs ----------
+const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs';
+let mermaidLib = null, graphStack = [], graphZoom = 1, graphRenders = 0, graphProblems = [], checkTimer = null;
+
+function showGraphChoice(id) {             // the project's graph in the list (also one the list does not offer)
+  const sel = $('graph');
+  sel.innerHTML = SETUP.graphs.map(g => `<option value="${esc(g.id)}">${esc(g.label)}</option>`).join('');
+  if (id && !SETUP.graphs.some(g => g.id === id))
+    sel.insertAdjacentHTML('beforeend', `<option value="${esc(id)}">${esc(id)} (not in the GUI list)</option>`);
+  sel.value = id || (SETUP.graphs[0] || {}).id || 'map';
+  checkGraph();
+}
+
+function checkGraph() {                     // compile the page's project with its graph, show the problems
+  clearTimeout(checkTimer);
+  checkTimer = setTimeout(async () => {
+    const g = SETUP.graphs.find(x => x.id === $('graph').value);
+    const about = g ? esc(g.description) : '';
+    try {
+      graphProblems = (await api('/api/check', { doc: documentOfPage() })).problems;
+    } catch (e) { graphProblems = [String(e)]; }
+    $('graphInfo').innerHTML = graphProblems.length ?
+      `<span class="bad">The project does not fit this graph:</span><br>${graphProblems.map(esc).join('<br>')}` :
+      `<span class="ok">✓ checked</span> ${about}`;
+    validate();
+  }, 300);
+}
+
+async function mermaidReady() {
+  if (!mermaidLib) {
+    mermaidLib = (await import(MERMAID_URL)).default;
+    mermaidLib.initialize({ startOnLoad: false, securityLevel: 'loose', maxTextSize: 500000, maxEdges: 5000,
+                            flowchart: { useMaxWidth: false, curve: 'basis' } });
+  }
+  return mermaidLib;
+}
+
+window.openSubgraph = id => { graphStack.push(id); renderGraph(); };
+
+function openGraph(id) {
+  graphStack = [id];
+  $('graphModal').style.display = 'flex';
+  renderGraph();
+}
+
+async function renderGraph() {
+  const id = graphStack[graphStack.length - 1];
+  $('graphCrumbs').innerHTML = graphStack.map((g, i) => i === graphStack.length - 1 ? esc(g) :
+    `<a href="#" data-i="${i}">${esc(g)}</a>`).join(' › ');
+  $('graphDesc').textContent = 'loading ...';
+  $('graphSvg').innerHTML = '';
+  try {
+    const g = await api(`/api/graph?id=${encodeURIComponent(id)}`);
+    const subs = Object.keys(g.subgraphs);
+    const extra = subs.map(n => `  click ${n} call openSubgraph("${g.subgraphs[n]}")`);
+    if (subs.length) extra.push('  classDef sub fill:#e8f1fb,stroke:#5b8bc9,stroke-width:2px;', `  class ${subs.join(',')} sub`);
+    const m = await mermaidReady();
+    const { svg, bindFunctions } = await m.render(`graphSvg${++graphRenders}`, g.mermaid + extra.join('\n') + '\n');
+    $('graphSvg').innerHTML = svg;
+    if (bindFunctions) bindFunctions($('graphSvg'));
+    $('graphDesc').textContent = `${g.description}  (${g.nodes} nodes, ${g.links} links` +
+      (subs.length ? '; blue boxes are subgraphs - click one to open it)' : ')');
+    zoomGraph('fit');
+  } catch (e) {
+    $('graphDesc').innerHTML = `<span class="bad">Diagram not drawn: ${esc(e)}</span>` +
+      ' (the diagram library is loaded from the internet: cdn.jsdelivr.net)';
+  }
+}
+
+function zoomGraph(how) {
+  const svg = $('graphSvg').querySelector('svg');
+  if (!svg) return;
+  const box = svg.viewBox.baseVal;
+  if (how === 'fit') graphZoom = Math.min(1.5, ($('graphBody').clientWidth - 30) / box.width);
+  else graphZoom = Math.max(0.05, Math.min(4, graphZoom * how));
+  svg.style.width = `${box.width * graphZoom}px`;
+  svg.style.height = `${box.height * graphZoom}px`;
+}
+
+// ---------- processing steps ----------
+function renderSteps(last) {
+  const chosen = last && Array.isArray(last.steps) ? new Set(last.steps) : null;
+  $('steps').innerHTML = SETUP.steps.map(s =>
+    `<label title="${esc(s.description)}"><input type="checkbox" data-step="${esc(s.key)}"` +
+    `${!chosen || chosen.has(s.key) ? ' checked' : ''}> ${esc(s.label)}</label>`).join('');
+  $('copyGame').checked = !last || last.copy_to_game !== false;
+  copyGameInfo();
+  for (const box of document.querySelectorAll('#steps input, #copyGame'))
+    box.addEventListener('change', () => { validate(); saveState(); });
+}
+const chosenSteps = () => [...document.querySelectorAll('#steps input:checked')].map(b => b.dataset.step);
+const copyToGame = () => !$('copyGame').disabled && $('copyGame').checked;
+
+// ---------- run ----------
+function addLog(lines) {
+  const c = $('console'), atEnd = c.scrollTop + c.clientHeight >= c.scrollHeight - 30;
+  for (const l of lines) {
+    const d = document.createElement('div');
+    d.textContent = l;
+    if (/^=====/.test(l)) d.className = 'c-head';
+    else if (/ERROR|Traceback|Error/.test(l)) d.className = 'c-err';
+    else if (/warning|note:/i.test(l)) d.className = 'c-warn';
+    c.appendChild(d);
+  }
+  if (atEnd) c.scrollTop = c.scrollHeight;
+}
+
+async function start() {
+  $('result').style.display = 'none';
+  $('console').textContent = '';
+  logNext = 0;
+  try {
+    const r = await api('/api/run', { id: projectId, doc: documentOfPage(), steps: chosenSteps(),
+                                      copy_to_game: copyToGame() });
+    projectId = r.id; doc = documentOfPage();
+    refreshProjects();
+  } catch (e) { addLog([`ERROR: ${e}`]); return; }
+  $('stop').disabled = false;
+  $('stopDel').disabled = false;
+  validate();
+  polling = setInterval(poll, 700);
+}
+
+async function poll() {
+  let r;
+  try { r = await api(`/api/log?from=${logNext}`); } catch { return; }
+  addLog(r.lines);
+  logNext = r.next;
+  $('runInfo').textContent = r.running ? `running: ${r.step}` : '';
+  if (!r.running) {
+    clearInterval(polling);
+    $('stop').disabled = true;
+    $('stopDel').disabled = !r.can_delete;
+    validate();
+    if (r.error) $('runInfo').innerHTML = `<span class="bad">${esc(r.error)}</span>`;
+    if (r.result) showResult(r.result);
+  }
+}
+
+function showResult(r) {
+  const n = v => v === null || v === undefined ? '–' : fmt(v, 1);
+  let h = `<table>
+    <tr><td>Climate</td><td>${r.mods.map(esc).join('<br>') || '–'} <span class="info">(mods)</span></td></tr>
+    <tr><td>Minimum height</td><td><b>${n(r.min_game)}</b></td></tr>
+    <tr><td>Maximum height</td><td><b>${n(r.max_game)}</b>${r.max_real ? ` (highest point ${fmt(r.max_real, 0)} m a.s.l.)` : ''}</td></tr>
+    <tr><td>Water level</td><td><b>0</b></td></tr>`;
+  for (const [label, file, ok] of r.files) h += `<tr><td>${esc(label)}</td><td${ok ? '' : ' class="info"'}>${esc(file)}${ok ? '' : ' (missing)'}</td></tr>`;
+  if (r.towns_file) h += `<tr><td>Towns/industries</td><td>${esc(r.towns_file)}</td></tr>`;
+  $('resultBody').innerHTML = h + '</table>';
+  $('previews').innerHTML = r.previews.map(p => `<a href="${p}" target="_blank"><img src="${p}?t=${Date.now()}"></a>`).join('');
+  $('result').style.display = '';
+  $('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ---------- operation ----------
+let dragStart = null;
+rect.on('mousedown', e => { map.dragging.disable(); dragStart = { mouse: e.latlng, center }; L.DomEvent.stop(e); });
+map.on('mousemove', e => {
+  if (!dragStart) return;
+  center = L.latLng(dragStart.center.lat + e.latlng.lat - dragStart.mouse.lat,
+                    dragStart.center.lng + e.latlng.lng - dragStart.mouse.lng);
+  fixedCrop = null;
+  update(false);
+});
+const endDrag = () => { if (dragStart) { dragStart = null; map.dragging.enable(); update(); } };
+map.on('mouseup', endDrag);
+document.addEventListener('mouseup', endDrag);
+map.on('dblclick', e => { center = e.latlng; changed(); });
+
+async function search() {
+  const q = $('q').value.trim();
+  if (!q) return;
+  try {
+    const j = await (await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q))).json();
+    if (!j.length) return;
+    center = L.latLng(+j[0].lat, +j[0].lon);
+    changed();
+    map.fitBounds(rect.getBounds(), { padding: [40, 40] });
+  } catch { }
+}
+
+function copyGameInfo() {
+  $('copyGame').disabled = !SETUP.user_data;
+  $('copyGame').parentElement.title = SETUP.user_data ? `into ${SETUP.user_data}` :
+    'no user data folder set (Game folders)';
+}
+
+function foldersInfo() {
+  $('gameFolder').value = SETUP.game_folder;
+  $('userData').value = SETUP.user_data;
+  $('foldersInfo').innerHTML = SETUP.game_folder ? '<span class="ok">Saved</span> (local/settings.toml)' :
+    '<span class="warn">no game installation set yet: the climate mod cannot be built</span>';
+}
+
+function keyInfo() {
+  $('keyInfo').innerHTML = SETUP.api_key_set ? '<span class="ok">Key saved</span> (local/settings.toml, not in git)' :
+    '<span class="warn">no key saved yet</span>';
+}
+
+async function init() {
+  try { SETUP = await api('/api/setup'); }
+  catch { $('nosrv').style.display = 'block'; $('start').disabled = true; return; }
+  $('size').innerHTML = SETUP.sizes.map(s => `<option value="${s.key}">${esc(s.label)}</option>`).join('') +
+    '<option value="custom">custom (from the project)</option>';
+  $('format').innerHTML = SETUP.formats.map(f => `<option value="${f}">${f.replace('x', ' : ')}</option>`).join('');
+  $('look').innerHTML = SETUP.looks.map(l => `<option value="${esc(l.path)}">${esc(l.label)}</option>`).join('');
+  $('demType').innerHTML = SETUP.dem_types.map(d => `<option value="${d.key}">${d.key} – ${esc(d.label)}</option>`).join('');
+  $('margin').textContent = fmt(SETUP.margin_km, 1);
+  keyInfo();
+  foldersInfo();
+  await refreshProjects();
+  $('saveFolders').onclick = async () => {
+    try {
+      const r = await api('/api/folders', { game_folder: $('gameFolder').value, user_data_folder: $('userData').value });
+      SETUP.game_folder = r.game_folder;
+      SETUP.user_data = r.user_data;
+      foldersInfo();
+      copyGameInfo();
+    } catch (e) { $('foldersInfo').innerHTML = `<span class="bad">${esc(e)}</span>`; }
+  };
+  $('saveKey').onclick = async () => {
+    const r = await api('/api/key', { key: $('apiKey').value });
+    $('apiKey').value = '';
+    SETUP.api_key_set = r.api_key_set;
+    keyInfo();
+    update(false);
+  };
+  ['size', 'format', 'snap', 'rotation'].forEach(id => $(id).addEventListener('change', changed));
+  $('scale').addEventListener('input', () => { fixedCrop = null; update(false); });
+  $('scale').addEventListener('change', changed);
+  $('minh').addEventListener('input', () => update(false));
+  $('realUntil').addEventListener('input', () => update(false));
+  $('climStep').addEventListener('input', () => update(false));
+  $('mapName').addEventListener('input', validate);
+  $('look').addEventListener('change', () => advanced.refresh());
+  ['srcDownload', 'srcFile'].forEach(id => $(id).addEventListener('change', loadTif));
+  $('demPath').addEventListener('change', loadTif);
+  $('checkTif').onclick = loadTif;
+  $('load').onclick = loadProject;
+  $('new').onclick = newProject;
+  $('search').onclick = search;
+  $('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+  $('save').onclick = saveProject;
+  $('start').onclick = start;
+  $('graph').onchange = checkGraph;
+  $('showGraph').onclick = () => openGraph($('graph').value);
+  $('graphClose').onclick = () => { $('graphModal').style.display = 'none'; };
+  $('gZoomIn').onclick = () => zoomGraph(1.25);
+  $('gZoomOut').onclick = () => zoomGraph(0.8);
+  $('gZoomFit').onclick = () => zoomGraph('fit');
+  $('graphCrumbs').onclick = e => {
+    const i = e.target.dataset && e.target.dataset.i;
+    if (i === undefined) return;
+    e.preventDefault();
+    graphStack = graphStack.slice(0, +i + 1);
+    renderGraph();
+  };
+  $('graphBody').addEventListener('wheel', e => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    zoomGraph(e.deltaY < 0 ? 1.1 : 0.9);
+  }, { passive: false });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('graphModal').style.display === 'flex') $('graphModal').style.display = 'none';
+  });
+  $('stop').onclick = () => api('/api/stop', {});
+  $('stopDel').onclick = async () => {
+    if (!confirm('Cancel the run and delete every file it created or overwrote? (Overwritten files of earlier ' +
+                 'runs are gone then. Downloads, cache and configs stay.)')) return;
+    $('stopDel').disabled = true;
+    $('runInfo').textContent = 'cancelling and deleting ...';
+    try { await api('/api/stop_delete', {}); } catch (e) { addLog([`ERROR: ${e}`]); }
+    clearInterval(polling);
+    polling = setInterval(poll, 700);
+  };
+  map.on('moveend', saveState);
+  const last = SETUP.last_state;
+  renderSteps(last);
+  if (last && last.project_id && SETUP.projects.some(p => p.id === last.project_id)) {
+    $('projectList').value = last.project_id;
+    await loadProject();
+  } else newProject();
+  if (last && last.view) map.setView([last.view.lat, last.view.lng], last.view.zoom);
+  restoring = false;
+  const r = await api('/api/log?from=0');         // a run still going on (page reloaded)
+  if (r.running) { $('stop').disabled = false; $('stopDel').disabled = false; polling = setInterval(poll, 700); }
+  update();
+}
+init();
+</script>
+</body>
+</html>

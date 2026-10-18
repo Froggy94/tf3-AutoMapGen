@@ -1,0 +1,57 @@
+# Project "GoldenTest": the legacy project's golden-master test region (Inn valley between Innsbruck and Hall,
+# 6 x 6 km, map 12 x 12 tiles at scale 1:2), on the climate preset Alpine Realistic.
+#   automapgen run --project golden_test --cache cache --downloads "../TF3 Hightmap/cache"
+#       (OSM region files of the legacy project, no new download)
+# The elevation model is read from the legacy project next to this one (development only). The region is small, so
+# like the legacy golden-master run: at most 3 towns, 800 game m apart. Graph map: the legacy run's road network is
+# compared no more (redesigned, ADR 0016).
+graph = "map"
+extends = ["../presets/alpine_realistic.toml"]
+
+[params]
+map_name = "GoldenTest"                 # in the names of the map's mods
+dem_path = "../TF3 Hightmap/data/INS4_GEDTM30.tif"
+crop = { west = 11.4193, south = 47.2524, east = 11.5007, north = 47.3077 }
+game_width_km = 3.072
+game_height_km = 3.072
+scale = 2
+rotation_deg = 0
+min_height_m = 540
+climate_reference_step_m = 0                     # the legacy mod: exact reference height (540m)
+water_sink_m = 40
+real_water_until_m = 560
+max_towns = 3
+town_min_distance_game_m = 800
+
+[nodes."terraforming/rivers_and_water/river_valley"]
+max_move_real_m = 0                     # painted rivers on the OSM course like the legacy project (comparison)
+
+# Alpine ground as in the legacy project (comparison; the preset changed it 2026-10-17): subarctic grass with alpine
+# grass and rock patches instead of alpine grass with subarctic grass and scree patches
+[defaults.climate.surfaces.alpine_ground.look]
+base = { kind = "game", name = "gr_br_sub" }
+
+[defaults.climate.surfaces.alpine_ground.look.patches]
+subarctic_grass = { enabled = false }
+ground_scree = { enabled = false }
+
+[defaults.climate.surfaces.alpine_ground.look.patches.alpine_grass]
+output = { kind = "output", material = { kind = "game", name = "grass_alpine" }, order = 920, dither = true }
+
+[defaults.climate.surfaces.alpine_ground.look.patches.alpine_grass.patch]
+share = 0.35
+noise = { frequency = 0.006, lacunarity = 2.5, octaves = 3, gain = 0.5 }
+center_offset = 0.05
+edge = 0.35
+slope_limit = { max_deg = 35, fade_deg = 5 }
+intensity = { kind = "varying", low = 0.7, high = 1, noise = { frequency = 0.018, lacunarity = 2, octaves = 2, gain = 0.5 } }
+
+[defaults.climate.surfaces.alpine_ground.look.patches.alpine_rock]
+output = { kind = "output", material = { kind = "game", name = "rock" }, order = 950, dither = true }
+
+[defaults.climate.surfaces.alpine_ground.look.patches.alpine_rock.patch]
+share = 0.32
+noise = { frequency = 0.005, lacunarity = 2.5, octaves = 3, gain = 0.5 }
+center_offset = 0.05
+edge = 0.1
+intensity = { kind = "varying", low = 0.24, high = 0.56, noise = { frequency = 0.015, lacunarity = 2, octaves = 2, gain = 0.5 } }

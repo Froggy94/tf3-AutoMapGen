@@ -1,0 +1,72 @@
+# Waterfall paint brushes of the climate mod (nodes/climate/waterfall.py: WaterfallSettings): the game's water_dirty
+# colour with white foam, seamless in every direction. Presets extend this file; enabled = false: no brushes.
+
+[defaults.waterfall]
+name = "Waterfall"
+size_px = 2048
+foam_color = [232, 238, 238]
+softness = 0.12
+clump_px = 160
+grain_px = 6
+foam_gloss = 0.35
+seed = 7
+image = "assets/pictures/waterfall_photo.png"   # the author's own photo
+image_highpass_px = 40
+wave_px = 512
+wave_warp = 0.25
+wave_warp_scale = 3
+first_order = 830
+
+[defaults.waterfall.variants.A]
+foam_share = 0.22
+strength = 1
+grain_weight = 0.45
+pattern = "-"
+
+[defaults.waterfall.variants.B]
+foam_share = 0.45
+strength = 0.5
+grain_weight = 0.45
+pattern = "-"
+
+[defaults.waterfall.variants.C]
+foam_share = 0.3
+strength = 0.75
+grain_weight = 0.45
+pattern = "-"
+
+[defaults.waterfall.variants.D]
+foam_share = 0.22
+strength = 0.9
+grain_weight = 0.25
+pattern = "-"
+
+[defaults.waterfall.variants.E]
+foam_share = 0.25
+strength = 1
+grain_weight = 0.35
+pattern = "h"
+
+[defaults.waterfall.variants.F]
+foam_share = 0.25
+strength = 1
+grain_weight = 0.35
+pattern = "v"
+
+[defaults.waterfall.variants.Photo]
+foam_share = 0.3
+strength = 1
+grain_weight = 0
+pattern = "img"
+
+[defaults.waterfall.variants.Photo90]
+foam_share = 0.3
+strength = 1
+grain_weight = 0
+pattern = "img90"
+
+[defaults.waterfall.variants.Mix]
+foam_share = 0.55
+strength = 1
+grain_weight = 0
+pattern = "imgmix"

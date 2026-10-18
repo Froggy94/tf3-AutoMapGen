@@ -1,0 +1,146 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_final_terrain_roads",
+  "title": "Final Terrain (with road network)",
+  "description": "Experimental: the final terrain plus the road network between the planned towns and industries, routed through the settled terrain with water (minimum radius, grade limit, bridges and tunnels where the profile leaves the ground; water and riverbeds with a margin crossed by high bridges only) and worked into it before the country roads and paths, which keep off it (ADR 0016).",
+  "extends": "map_final_terrain",
+  "inputs": {
+    "biome_preview": "image"
+  },
+  "outputs": {
+    "road_plan": "road_plan"
+  },
+  "params": {
+    "road_min_capacity": {
+      "to": [
+        "road_network.min_capacity"
+      ],
+      "description": "towns with a smaller start size get no road connection"
+    }
+  },
+  "nodes": {
+    "road_network": {
+      "type": "roads.network"
+    },
+    "roads_plan_json": {
+      "type": "file.json",
+      "params": {
+        "name": "_roads_plan.json"
+      }
+    },
+    "roads_plan_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_roads_plan.png"
+      }
+    },
+    "road_keep_free": {
+      "type": "mask.any",
+      "note": "the country roads keep off water and the planned roads"
+    },
+    "all_road_cores": {
+      "type": "mask.any",
+      "note": "the paths keep off both kinds of roads"
+    }
+  },
+  "unlink": [
+    [
+      "final.heights",
+      "road_terrain.heights"
+    ],
+    [
+      "final.no_cover",
+      "road_terrain.keep_free"
+    ],
+    [
+      "road_terrain.core",
+      "path_terrain.road_core"
+    ]
+  ],
+  "links": [
+    [
+      "final.heights",
+      "road_network.heights"
+    ],
+    [
+      "final.no_cover",
+      "road_network.water"
+    ],
+    [
+      "final.riverbed",
+      "road_network.riverbed"
+    ],
+    [
+      "final.forest",
+      "road_network.forest"
+    ],
+    [
+      "final.rock",
+      "road_network.rock"
+    ],
+    [
+      "final.glacier",
+      "road_network.glacier"
+    ],
+    [
+      "inputs.towns",
+      "road_network.towns"
+    ],
+    [
+      "inputs.industries",
+      "road_network.industries"
+    ],
+    [
+      "inputs.map_format",
+      "road_network.map_format"
+    ],
+    [
+      "inputs.land_min_m",
+      "road_network.land_min_m"
+    ],
+    [
+      "inputs.biome_preview",
+      "road_network.base"
+    ],
+    [
+      "road_network.plan",
+      "roads_plan_json.document"
+    ],
+    [
+      "road_network.preview",
+      "roads_plan_png.image"
+    ],
+    [
+      "road_network.heights",
+      "road_terrain.heights"
+    ],
+    [
+      "final.no_cover",
+      "road_keep_free.masks"
+    ],
+    [
+      "road_network.core",
+      "road_keep_free.masks"
+    ],
+    [
+      "road_keep_free.mask",
+      "road_terrain.keep_free"
+    ],
+    [
+      "road_terrain.core",
+      "all_road_cores.masks"
+    ],
+    [
+      "road_network.core",
+      "all_road_cores.masks"
+    ],
+    [
+      "all_road_cores.mask",
+      "path_terrain.road_core"
+    ],
+    [
+      "road_network.plan",
+      "outputs.road_plan"
+    ]
+  ]
+}

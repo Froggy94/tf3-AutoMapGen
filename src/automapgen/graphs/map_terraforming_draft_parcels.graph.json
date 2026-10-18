@@ -1,0 +1,13 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_terraforming_draft_parcels",
+  "title": "Draft Terrain (parcels)",
+  "description": "The draft terrain with fields from the land cover cut into parcels (terrain_core_parcels).",
+  "extends": "map_terraforming_draft",
+  "nodes": {
+    "draft": {
+      "type": "graph:terrain_core_parcels",
+      "note": "the terrain the planners see"
+    }
+  }
+}

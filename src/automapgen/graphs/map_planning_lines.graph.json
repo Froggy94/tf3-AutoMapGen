@@ -1,0 +1,185 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_planning_lines",
+  "title": "Paths & Country Roads",
+  "description": "Field tracks (paved; in forest and settlement only main tracks) and hiking paths, and the country roads by class, from OpenStreetMap - cut at the map edge, simplified, away from water and glaciers. Only lines here; final_terrain works them into the terrain, biome_creation cuts forest gaps along them.",
+  "inputs": {
+    "draft_planning_landcover": "classes",
+    "osm_paths": "osm_lines",
+    "places": "osm_points",
+    "frame": "map_frame",
+    "draft_water": "mask",
+    "draft_glacier": "mask",
+    "osm_roads": "osm_lines",
+    "biome_preview": "image",
+    "draft_heightmap": "image"
+  },
+  "outputs": {
+    "roads": "road_lines",
+    "paths": "path_plan"
+  },
+  "nodes": {
+    "forest_or_settlement": {
+      "type": "classes.select",
+      "params": {
+        "codes": [
+          10,
+          50
+        ]
+      }
+    },
+    "settlement": {
+      "type": "classes.select",
+      "params": {
+        "codes": [
+          50
+        ]
+      }
+    },
+    "paths": {
+      "type": "paths.plan"
+    },
+    "roads": {
+      "type": "roads.from_osm"
+    },
+    "paths_json": {
+      "type": "file.json",
+      "params": {
+        "name": "_paths.json"
+      }
+    },
+    "roads_json": {
+      "type": "file.json",
+      "params": {
+        "name": "_roads_osm.json"
+      }
+    },
+    "preview_base": {
+      "type": "lines.preview_base"
+    },
+    "paths_preview": {
+      "type": "paths.preview"
+    },
+    "paths_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_paths_preview.png"
+      }
+    },
+    "roads_preview": {
+      "type": "roads.preview"
+    },
+    "roads_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_roads_osm_preview.png"
+      }
+    }
+  },
+  "links": [
+    [
+      "inputs.draft_planning_landcover",
+      "forest_or_settlement.classes"
+    ],
+    [
+      "inputs.draft_planning_landcover",
+      "settlement.classes"
+    ],
+    [
+      "inputs.osm_paths",
+      "paths.ways"
+    ],
+    [
+      "inputs.places",
+      "paths.places"
+    ],
+    [
+      "inputs.frame",
+      "paths.frame"
+    ],
+    [
+      "inputs.draft_water",
+      "paths.blocked"
+    ],
+    [
+      "inputs.draft_glacier",
+      "paths.blocked"
+    ],
+    [
+      "forest_or_settlement.mask",
+      "paths.restricted"
+    ],
+    [
+      "inputs.osm_roads",
+      "roads.ways"
+    ],
+    [
+      "inputs.places",
+      "roads.places"
+    ],
+    [
+      "inputs.frame",
+      "roads.frame"
+    ],
+    [
+      "inputs.draft_water",
+      "roads.water"
+    ],
+    [
+      "settlement.mask",
+      "roads.settlement"
+    ],
+    [
+      "paths.paths",
+      "paths_json.document"
+    ],
+    [
+      "roads.roads",
+      "roads_json.document"
+    ],
+    [
+      "inputs.biome_preview",
+      "preview_base.biome_preview"
+    ],
+    [
+      "inputs.draft_water",
+      "preview_base.water"
+    ],
+    [
+      "inputs.draft_heightmap",
+      "preview_base.heightmap"
+    ],
+    [
+      "preview_base.image",
+      "paths_preview.base"
+    ],
+    [
+      "paths.paths",
+      "paths_preview.paths"
+    ],
+    [
+      "paths_preview.image",
+      "paths_preview_png.image"
+    ],
+    [
+      "preview_base.image",
+      "roads_preview.base"
+    ],
+    [
+      "roads.roads",
+      "roads_preview.roads"
+    ],
+    [
+      "roads_preview.image",
+      "roads_preview_png.image"
+    ],
+    [
+      "roads.roads",
+      "outputs.roads"
+    ],
+    [
+      "paths.paths",
+      "outputs.paths"
+    ]
+  ]
+}

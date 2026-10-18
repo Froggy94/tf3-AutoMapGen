@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tf3-automapgen"
+version = "0.1.0.dev0"
+description = "tf3-Auto-map-generator-framework: a node-based generator for realistic Transport Fever 3 maps from real geodata."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.13"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pillow",
+    "rasterio",
+    "osmium",
+    "pydantic>=2.7",
+    "requests",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "mypy", "ruff", "scipy-stubs"]
+build = ["pyinstaller"]            # the Windows build: python packaging/build.py
+
+[project.scripts]
+automapgen = "automapgen.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/automapgen"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not slow'"
+markers = ["slow: long runs on real data (comparison with the legacy project)"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+files = ["src", "tests"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["rasterio", "rasterio.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tf3gen.*"]              # the legacy project, imported only by the comparison tests
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C4", "PIE", "RET", "RUF", "PT"]

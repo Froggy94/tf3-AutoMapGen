@@ -1,0 +1,129 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_terraforming_rivers",
+  "title": "Rivers & Water",
+  "description": "Continuous rivers from OpenStreetMap: real (game) water where the valley floor lies below real_water_until_m, painted water upstream, weirs between them, widths from WorldCover; painted rivers moved into the valley line of the elevation model (ADR 0011). Writes the river plan, previews and height profiles.",
+  "inputs": {
+    "landcover": "classes",
+    "waterways": "osm_ways",
+    "frame": "map_frame",
+    "original_heights": "field",
+    "valley_floor": "field",
+    "land_min_m": "number"
+  },
+  "outputs": {
+    "river_plan": "river_plan",
+    "worldcover_water": "mask"
+  },
+  "params": {
+    "real_water_until_m": {
+      "to": [
+        "rivers.real_water_until_m"
+      ],
+      "description": "real (game) water only up to this height a.s.l.; above painted water"
+    }
+  },
+  "nodes": {
+    "worldcover_water": {
+      "type": "graph:import_layer",
+      "params": {
+        "codes": [
+          80
+        ],
+        "name": "_worldcover_water.png"
+      }
+    },
+    "rivers": {
+      "type": "rivers.plan"
+    },
+    "river_valley": {
+      "type": "rivers.to_valley"
+    },
+    "river_valley_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_rivers_valley_preview.png"
+      }
+    },
+    "rivers_json": {
+      "type": "file.json",
+      "params": {
+        "name": "_rivers.json"
+      }
+    },
+    "rivers_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_rivers_preview.png"
+      }
+    },
+    "rivers_profiles_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_rivers_profiles.png"
+      }
+    }
+  },
+  "links": [
+    [
+      "inputs.landcover",
+      "worldcover_water.landcover"
+    ],
+    [
+      "inputs.waterways",
+      "rivers.ways"
+    ],
+    [
+      "inputs.frame",
+      "rivers.frame"
+    ],
+    [
+      "inputs.original_heights",
+      "rivers.heights"
+    ],
+    [
+      "inputs.valley_floor",
+      "rivers.floor"
+    ],
+    [
+      "worldcover_water.mask",
+      "rivers.water"
+    ],
+    [
+      "inputs.land_min_m",
+      "rivers.land_min_m"
+    ],
+    [
+      "rivers.plan",
+      "river_valley.plan"
+    ],
+    [
+      "inputs.original_heights",
+      "river_valley.heights"
+    ],
+    [
+      "river_valley.preview",
+      "river_valley_preview_png.image"
+    ],
+    [
+      "river_valley.plan",
+      "rivers_json.document"
+    ],
+    [
+      "rivers.preview",
+      "rivers_preview_png.image"
+    ],
+    [
+      "rivers.profiles",
+      "rivers_profiles_png.image"
+    ],
+    [
+      "river_valley.plan",
+      "outputs.river_plan"
+    ],
+    [
+      "worldcover_water.mask",
+      "outputs.worldcover_water"
+    ]
+  ]
+}

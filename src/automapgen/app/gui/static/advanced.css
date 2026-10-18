@@ -1,0 +1,35 @@
+/* "Advanced settings" window (advanced.js) */
+#advBtn { width: 100%; margin-bottom: 10px; }
+#advModal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 2000;
+            align-items: center; justify-content: center; }
+#advPanel { background: #fff; width: min(1200px, 96vw); height: 92vh; border-radius: 8px; display: flex;
+            flex-direction: column; overflow: hidden; }
+#advHead { display: flex; gap: 8px; align-items: center; padding: 10px 14px 4px; }
+#advHead h2 { font-size: 16px; margin: 0; flex: 1; }
+#advHead input { width: 300px; padding: 4px 6px; }
+#advNote { padding: 0 14px 6px; border-bottom: 1px solid #ddd; }
+#advBody { flex: 1; display: flex; min-height: 0; }
+#advNav { width: 210px; border-right: 1px solid #ddd; overflow-y: auto; padding: 6px 0; flex: 0 0 auto; }
+.advTab { padding: 6px 12px; cursor: pointer; display: flex; justify-content: space-between; }
+.advTab:hover { background: #f0f0f0; }
+.advTab.on { background: #e3eefc; font-weight: 600; }
+.advTab span { color: #b26a00; font-weight: 600; }
+#advList { flex: 1; overflow-y: auto; padding: 4px 16px 20px; }
+#advList h3 { font-size: 15px; margin: 12px 0 6px; }
+.advGroup { margin: 0 0 10px; padding: 4px 0 6px; border-top: 1px solid #eee; }
+.advGroup h4 { margin: 6px 0 2px; font-size: 13px; }
+.advRow { display: grid; grid-template-columns: 230px 240px 1fr 28px; gap: 8px; align-items: start;
+          padding: 3px 4px; border-radius: 4px; }
+.advRow:hover { background: #fafafa; }
+.advRow.chg { background: #fff4dc; }
+.advRow.bad input, .advRow.bad textarea { outline: 2px solid #c62828; }
+.advRow code, .advObj code { font-weight: 600; word-break: break-all; }
+.advIn input[type=text], .advIn input[type=number], .advIn select, .advIn textarea { width: 100%; padding: 2px 4px; }
+.advIn textarea { font: 12px/1.3 Consolas, monospace; resize: vertical; }
+.advErr { color: #c62828; font-size: 12px; }
+.advDoc { color: #444; font-size: 12px; }
+.advObj { margin: 2px 0 2px 4px; padding-left: 10px; border-left: 2px solid #e4e4e4; }
+.advObj > summary { cursor: pointer; padding: 3px 0; }
+.advCnt { color: #b26a00; font-weight: 600; font-size: 12px; }
+.advUndo { padding: 0 6px; }
+.advObj > summary .advUndo { margin-left: 6px; font-size: 11px; }

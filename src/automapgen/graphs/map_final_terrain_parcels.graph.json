@@ -1,0 +1,25 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_final_terrain_parcels",
+  "title": "Final Terrain (parcels)",
+  "description": "The final terrain with fields from the land cover cut into parcels (terrain_core_parcels); writes the farm grid for farms.",
+  "extends": "map_final_terrain",
+  "nodes": {
+    "final": {
+      "type": "graph:terrain_core_parcels"
+    },
+    "farm_grid_json": {
+      "type": "file.json",
+      "params": {
+        "name": "_parcels.json",
+        "compact": true
+      }
+    }
+  },
+  "links": [
+    [
+      "final.farm_grid",
+      "farm_grid_json.document"
+    ]
+  ]
+}

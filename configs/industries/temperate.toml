@@ -1,0 +1,291 @@
+# Industry planning of the temperate climate (climate presets on the temperate base climate extend this file):
+# building sites, resource areas, placement, town specialisation, demand, names. Taken over from the legacy project
+# (configs/industries/temperate.toml, configs/industry_mod.toml); own drawn resource areas (sketch) follow with the GUI.
+# Widths with _game_m are game metres. The industry type names are game content (they become industry names in game).
+
+[defaults.industries]
+standard_only = true
+preview_width = 2000
+extra_industries = ["cement_plant", "paper_mill", "printing_press", "rubber_farm", "tire_factory", "vehicle_factory"]
+extra_cargos = ["cement", "books", "paper", "rubber", "tires"]
+
+[defaults.industries.mod]
+mod_id = "DHE_industries_1"
+folder = "industries/dhe"
+trade_mod_id = "DHE_foreign_trade_1"
+trade_folder = "industries/dhe_trade"
+
+[defaults.industries.sites]
+work_px = 4
+town_clear_game_m = 700
+site_near_game_m = 1500
+site_full_share = 0.25
+local_game_m = 300
+noise = 0.5
+noise_game_m = 2500
+seed = 11
+region_peak_share = 0.6
+region_radius_game_m = 3000
+region_spacing_game_m = 5000
+region_min_km2 = 1
+
+[defaults.industries.sites.sites.factory]
+radius_game_m = 170
+relief_game_m = 25
+color = [240, 200, 40]
+label = "factory (about +-150 m)"
+
+[defaults.industries.sites.sites.field]
+radius_game_m = 280
+relief_game_m = 40
+color = [40, 180, 60]
+label = "with fields/pits (about +-250 m)"
+
+[defaults.industries.sites.sites.compact]
+radius_game_m = 170
+relief_game_m = 50
+color = [230, 90, 40]
+label = "compact in the mountains (only here)"
+
+[defaults.industries.sites.resources.farm]
+industries = ["farm"]
+sites = ["field"]
+regions = 6
+smooth_game_m = 900
+color = [240, 200, 40]
+label = "arable farming"
+
+[defaults.industries.sites.resources.livestock]
+industries = ["livestock_farm"]
+sites = ["field"]
+regions = 6
+smooth_game_m = 900
+color = [150, 210, 80]
+label = "livestock"
+
+[defaults.industries.sites.resources.forest]
+industries = ["forest"]
+sites = ["field"]
+regions = 6
+smooth_game_m = 900
+color = [20, 110, 40]
+label = "forestry"
+
+[defaults.industries.sites.resources.plantation]
+industries = ["rubber_farm"]
+sites = ["field"]
+regions = 1
+smooth_game_m = 900
+color = [200, 120, 200]
+label = "plantation"
+
+[defaults.industries.sites.resources.coal]
+industries = ["coal_mine"]
+sites = ["field", "compact"]
+regions = 2
+smooth_game_m = 1500
+color = [40, 40, 40]
+label = "coal"
+peak = 0.45
+radius_game_m = 4500
+spacing_game_m = 8000
+
+[defaults.industries.sites.resources.iron_ore]
+industries = ["iron_ore_mine"]
+sites = ["field", "compact"]
+regions = 2
+smooth_game_m = 1500
+color = [170, 70, 40]
+label = "iron ore"
+peak = 0.45
+radius_game_m = 4500
+spacing_game_m = 8000
+
+[defaults.industries.sites.resources.stone]
+industries = ["quarry"]
+sites = ["field", "compact"]
+regions = 3
+smooth_game_m = 1200
+color = [150, 150, 160]
+label = "stone"
+peak = 0.45
+radius_game_m = 4500
+spacing_game_m = 8000
+
+[defaults.industries.sites.resources.clay]
+industries = ["clay_pit"]
+sites = ["field", "compact"]
+regions = 2
+smooth_game_m = 1200
+color = [190, 110, 60]
+label = "clay"
+
+[defaults.industries.sites.resources.sand]
+industries = ["sand_pit"]
+sites = ["field", "compact"]
+regions = 3
+smooth_game_m = 1000
+color = [230, 210, 150]
+label = "sand/gravel"
+
+[defaults.industries.sites.resources.oil]
+industries = ["oil_well"]
+sites = ["field", "compact"]
+regions = 1
+smooth_game_m = 2000
+color = [120, 40, 140]
+label = "oil"
+
+[defaults.industries.sites.resources.fish]
+industries = ["fishing_grounds"]
+sites = []
+regions = 4
+smooth_game_m = 300
+color = [40, 120, 230]
+label = "fishing"
+
+
+[defaults.industries.plan]
+seed = 5
+intermediate = ["saw_mill", "bricks_works", "cement_plant", "glass_works", "steel_mill", "oil_refinery", "weaving_mill", "tire_factory", "paper_mill", "chemical_plant"]
+complex = ["brewery", "furniture_factory", "food_factory", "machine_factory", "tool_factory", "textile_factory", "printing_press", "vehicle_factory"]
+production_per_type = { saw_mill = 2, bricks_works = 2, cement_plant = 2 }
+medium_town_capacity = 150
+large_town_capacity = 400
+specializations = { village = 0, medium = 1, large = 2 }
+import_cost_game_m = 20000
+own_allowed = ["fish"]
+trade_points = 0
+trade_spread_m_per_km = 25
+trade_edge_game_m = 1500
+producer_pref = { crude_oil = "oil_well", sand = "sand_pit", wool = "livestock_farm", grain = "farm" }
+far_cargos = ["beverages", "books", "clothes", "fuel", "furniture", "machines", "tinned_food", "tools"]
+local_only = ["fish"]
+local_max_game_m = 8000
+far_min_capacity = 250
+balance_game_m = 2500
+towns_per_local_producer = 3
+towns_per_far_producer = 3
+max_per_type = 2
+agriculture = ["farm", "livestock_farm"]
+factory_town_game_m = 3000
+raw_town_game_m = [1500, 5000]
+agri_town_game_m = [6000, 1500]
+spacing_game_m = 600
+map_edge_game_m = 400
+region_edge_game_m = 1000
+compact = ["clay_pit", "coal_mine", "iron_ore_mine", "oil_well", "quarry", "sand_pit"]
+compact_mountain_share = 0.2
+compact_field_share = 0.1
+fish_shore_game_m = 200
+on_water = ["fishing_grounds"]
+
+[defaults.industries.plan.raw_resource]
+farm = "farm"
+livestock_farm = "livestock"
+forest = "forest"
+rubber_farm = "plantation"
+coal_mine = "coal"
+iron_ore_mine = "iron_ore"
+quarry = "stone"
+clay_pit = "clay"
+sand_pit = "sand"
+oil_well = "oil"
+fishing_grounds = "fish"
+
+[defaults.industries.plan.town_cargos]
+vegetables = [0, "com"]
+meat = [0, "com"]
+fish = [0, "com"]
+beverages = [1, "com"]
+clothes = [1, "com"]
+tinned_food = [1, "com"]
+books = [1, "com"]
+planks = [0, "ind"]
+bricks = [0, "ind"]
+cement = [0, "ind"]
+fuel = [0, "ind"]
+furniture = [1, "ind"]
+machines = [1, "ind"]
+tools = [1, "ind"]
+
+[defaults.industries.naming]
+place_types = { city = 0.5, town = 0.6, village = 1, hamlet = 2 }
+max_game_m = 5000
+
+[defaults.industries.naming.type_names]
+farm = "Bauernhof"
+livestock_farm = "Viehhof"
+forest = "Forstbetrieb"
+rubber_farm = "Plantage"
+coal_mine = "Kohlebergwerk"
+iron_ore_mine = "Erzbergwerk"
+quarry = "Steinbruch"
+clay_pit = "Lehmgrube"
+sand_pit = "Kiesgrube"
+oil_well = "Ölfeld"
+fishing_grounds = "Fischerei"
+saw_mill = "Sägewerk"
+bricks_works = "Ziegelei"
+cement_plant = "Zementwerk"
+glass_works = "Glashütte"
+steel_mill = "Stahlwerk"
+oil_refinery = "Raffinerie"
+weaving_mill = "Weberei"
+tire_factory = "Reifenwerk"
+paper_mill = "Papierfabrik"
+chemical_plant = "Chemiewerk"
+brewery = "Brauerei"
+furniture_factory = "Möbelfabrik"
+food_factory = "Konservenfabrik"
+machine_factory = "Maschinenfabrik"
+tool_factory = "Werkzeugfabrik"
+textile_factory = "Textilfabrik"
+printing_press = "Druckerei"
+vehicle_factory = "Fahrzeugwerk"
+aussenhandel = "Außenhandel"
+
+[defaults.industries.short_names]
+farm = "Farm"
+livestock_farm = "Live"
+forest = "Forst"
+rubber_farm = "Rubb"
+coal_mine = "Coal"
+iron_ore_mine = "Ore"
+quarry = "Stone"
+clay_pit = "Clay"
+sand_pit = "Sand"
+oil_well = "Oil"
+fishing_grounds = "Fish"
+saw_mill = "Saw"
+bricks_works = "Brick"
+cement_plant = "Cem"
+glass_works = "Glass"
+steel_mill = "Steel"
+oil_refinery = "Refin"
+weaving_mill = "Weave"
+tire_factory = "Tire"
+paper_mill = "Paper"
+chemical_plant = "Chem"
+brewery = "Brew"
+furniture_factory = "Furn"
+food_factory = "Food"
+machine_factory = "Mach"
+tool_factory = "Tool"
+textile_factory = "Text"
+printing_press = "Print"
+vehicle_factory = "Vehic"
+aussenhandel = "Trade"
+
+[defaults.industries.industry_colors]
+farm = [240, 200, 40]
+livestock_farm = [150, 210, 80]
+forest = [20, 110, 40]
+rubber_farm = [200, 120, 200]
+coal_mine = [40, 40, 40]
+iron_ore_mine = [170, 70, 40]
+quarry = [150, 150, 160]
+clay_pit = [190, 110, 60]
+sand_pit = [230, 210, 150]
+oil_well = [120, 40, 140]
+fishing_grounds = [40, 120, 230]

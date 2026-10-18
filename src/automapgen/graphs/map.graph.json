@@ -1,0 +1,485 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map",
+  "title": "Map Generation",
+  "description": "The complete map: heightmap, biomes and rivers (painted ones moved into the valley line); a draft terrain (terrain_core) for the planners - paths, country roads, towns, industries; the terrain settled around towns and industries; the final terrain (terrain_core again) with the terrain under roads and paths and the riverbed groove; all import layers, plans, the map editor's import files, the climate mod and the map's own mods (paths as streets, industry names). The road network between the places is not built here (experimental, graph map_roads).",
+  "params": {
+    "dem_path": {
+      "to": [
+        "source_data.dem_path"
+      ],
+      "description": "GeoTIFF of the elevation model (empty: download)"
+    },
+    "crop": {
+      "to": [
+        "source_data.crop"
+      ],
+      "description": "part of the elevation model (WGS84 degrees)"
+    },
+    "dem_download": {
+      "to": [
+        "source_data.dem_download"
+      ],
+      "description": "without dem_path: the elevation model to download from OpenTopography"
+    },
+    "game_width_km": {
+      "to": [
+        "source_data.game_width_km"
+      ]
+    },
+    "game_height_km": {
+      "to": [
+        "source_data.game_height_km"
+      ]
+    },
+    "scale": {
+      "to": [
+        "source_data.scale"
+      ],
+      "description": "scale 1:scale"
+    },
+    "rotation_deg": {
+      "to": [
+        "source_data.rotation_deg"
+      ]
+    },
+    "min_height_m": {
+      "to": [
+        "terraforming.min_height_m"
+      ],
+      "description": "lowest land; empty = lowest point"
+    },
+    "water_sink_m": {
+      "to": [
+        "terraforming.water_sink_m",
+        "final_terrain.water_sink_m"
+      ],
+      "description": "core of real water this much below the lowest land"
+    },
+    "max_height_m": {
+      "to": [
+        "final_terrain.max_height_m"
+      ],
+      "description": "white of the heightmap; empty = highest point"
+    },
+    "real_water_until_m": {
+      "to": [
+        "terraforming.real_water_until_m",
+        "final_terrain.real_water_until_m"
+      ],
+      "description": "real (game) water only up to this height a.s.l.; above painted water; empty = 120 m above the lowest land"
+    },
+    "climate_reference_step_m": {
+      "to": [
+        "climate.climate_reference_step_m"
+      ],
+      "description": "the climate mod's reference height = the lowest land rounded to this step (0 = exact)"
+    },
+    "max_towns": {
+      "to": [
+        "planning.max_towns"
+      ],
+      "description": "at most this many towns (0 = from the map area)"
+    },
+    "town_min_distance_game_m": {
+      "to": [
+        "planning.town_min_distance_game_m"
+      ],
+      "description": "minimum distance between towns"
+    },
+    "path_forest_gap_game_m": {
+      "to": [
+        "biome_creation.path_forest_gap_game_m"
+      ],
+      "description": "gap in the forest along paths"
+    },
+    "road_forest_gap_game_m": {
+      "to": [
+        "biome_creation.road_forest_gap_game_m"
+      ],
+      "description": "gap in the forest along roads"
+    },
+    "biome_limits_m": {
+      "to": [
+        "terraforming.biome_limits_m"
+      ],
+      "description": "preset: borders between biome 1|2, 2|3, 3|4 (m)"
+    },
+    "mountains_from_m": {
+      "to": [
+        "terraforming.mountains_from_m"
+      ],
+      "description": "preset: mountain mask from (m)"
+    },
+    "forest_classes": {
+      "to": [
+        "terraforming.forest_classes",
+        "final_terrain.forest_classes"
+      ],
+      "description": "preset"
+    },
+    "meadow_classes": {
+      "to": [
+        "terraforming.meadow_classes",
+        "final_terrain.meadow_classes"
+      ],
+      "description": "preset"
+    },
+    "cropland_classes": {
+      "to": [
+        "terraforming.cropland_classes",
+        "final_terrain.cropland_classes"
+      ],
+      "description": "preset"
+    },
+    "rock_classes": {
+      "to": [
+        "terraforming.rock_classes",
+        "final_terrain.rock_classes"
+      ],
+      "description": "preset"
+    },
+    "crops": {
+      "to": [
+        "terraforming.crops",
+        "final_terrain.crops"
+      ],
+      "description": "preset: crop types of the fields"
+    },
+    "industries": {
+      "to": [
+        "planning.industries",
+        "climate.industries",
+        "map_mods.industries"
+      ],
+      "description": "preset: the industry planning of the climate"
+    },
+    "climate": {
+      "to": [
+        "climate.climate"
+      ],
+      "description": "preset: the climate (landscape type) of the climate mod"
+    },
+    "transition": {
+      "to": [
+        "climate.transition",
+        "biome_creation.transition"
+      ],
+      "description": "landscape: a second look on part of the map"
+    },
+    "publishing": {
+      "to": [
+        "climate.publishing",
+        "map_mods.publishing"
+      ],
+      "description": "names, author and images of the published mods"
+    },
+    "climate_texts": {
+      "to": [
+        "climate.climate_texts"
+      ],
+      "description": "texts and picture of the climate mod"
+    },
+    "economy": {
+      "to": [
+        "climate.economy"
+      ],
+      "description": "economy of the climate"
+    },
+    "waterfall": {
+      "to": [
+        "climate.waterfall"
+      ],
+      "description": "waterfall brushes of the climate mod"
+    },
+    "map_name": {
+      "to": [
+        "map_mods.map_name"
+      ],
+      "description": "name of the map in the names of its mods"
+    },
+    "map_mod_texts": {
+      "to": [
+        "map_mods.map_mod_texts"
+      ],
+      "description": "titles and mod hub texts of the map's own mods"
+    },
+    "path_street_mod": {
+      "to": [
+        "map_mods.path_street_mod"
+      ],
+      "description": "the mod that builds field tracks and hiking paths as streets"
+    },
+    "industry_names_mod": {
+      "to": [
+        "map_mods.industry_names_mod"
+      ],
+      "description": "the mod that names the industries after the nearest town"
+    }
+  },
+  "nodes": {
+    "source_data": {
+      "type": "graph:map_source_data"
+    },
+    "terraforming": {
+      "type": "graph:map_terraforming"
+    },
+    "planning": {
+      "type": "graph:map_planning"
+    },
+    "final_terrain": {
+      "type": "graph:map_final_terrain"
+    },
+    "biome_creation": {
+      "type": "graph:map_biome_creation"
+    },
+    "climate": {
+      "type": "graph:map_climate"
+    },
+    "map_mods": {
+      "type": "graph:map_mods"
+    }
+  },
+  "links": [
+    [
+      "source_data.heights",
+      "terraforming.heights"
+    ],
+    [
+      "terraforming.biomes",
+      "biome_creation.biomes"
+    ],
+    [
+      "terraforming.mountains",
+      "biome_creation.mountains"
+    ],
+    [
+      "source_data.landcover",
+      "terraforming.landcover"
+    ],
+    [
+      "source_data.original_heights",
+      "terraforming.original_heights"
+    ],
+    [
+      "source_data.waterways",
+      "terraforming.waterways"
+    ],
+    [
+      "source_data.frame",
+      "terraforming.frame"
+    ],
+    [
+      "source_data.farmland",
+      "terraforming.farmland"
+    ],
+    [
+      "source_data.map_format",
+      "terraforming.map_format"
+    ],
+    [
+      "terraforming.draft_planning_landcover",
+      "planning.draft_planning_landcover"
+    ],
+    [
+      "source_data.osm_paths",
+      "planning.osm_paths"
+    ],
+    [
+      "source_data.places",
+      "planning.places"
+    ],
+    [
+      "source_data.frame",
+      "planning.frame"
+    ],
+    [
+      "terraforming.draft_water",
+      "planning.draft_water"
+    ],
+    [
+      "terraforming.draft_glacier",
+      "planning.draft_glacier"
+    ],
+    [
+      "source_data.osm_roads",
+      "planning.osm_roads"
+    ],
+    [
+      "terraforming.biome_preview",
+      "planning.biome_preview"
+    ],
+    [
+      "terraforming.draft_heightmap",
+      "planning.draft_heightmap"
+    ],
+    [
+      "terraforming.draft_heights",
+      "planning.draft_heights"
+    ],
+    [
+      "terraforming.black_m",
+      "planning.black_m"
+    ],
+    [
+      "terraforming.draft_shore",
+      "planning.draft_shore"
+    ],
+    [
+      "terraforming.draft_rock",
+      "planning.draft_rock"
+    ],
+    [
+      "source_data.map_format",
+      "planning.map_format"
+    ],
+    [
+      "terraforming.draft_forest",
+      "planning.draft_forest"
+    ],
+    [
+      "terraforming.draft_meadow",
+      "planning.draft_meadow"
+    ],
+    [
+      "terraforming.draft_cropland",
+      "planning.draft_cropland"
+    ],
+    [
+      "terraforming.mountains",
+      "planning.mountains"
+    ],
+    [
+      "source_data.industry_rules",
+      "planning.industry_rules"
+    ],
+    [
+      "terraforming.land",
+      "final_terrain.land"
+    ],
+    [
+      "terraforming.worldcover_water",
+      "final_terrain.worldcover_water"
+    ],
+    [
+      "terraforming.land_min_m",
+      "final_terrain.land_min_m"
+    ],
+    [
+      "source_data.map_format",
+      "final_terrain.map_format"
+    ],
+    [
+      "planning.towns",
+      "final_terrain.towns"
+    ],
+    [
+      "planning.industries",
+      "final_terrain.industries"
+    ],
+    [
+      "source_data.landcover",
+      "final_terrain.landcover"
+    ],
+    [
+      "terraforming.river_plan",
+      "final_terrain.river_plan"
+    ],
+    [
+      "source_data.farmland",
+      "final_terrain.farmland"
+    ],
+    [
+      "planning.roads",
+      "final_terrain.roads"
+    ],
+    [
+      "planning.paths",
+      "final_terrain.paths"
+    ],
+    [
+      "terraforming.black_m",
+      "final_terrain.black_m"
+    ],
+    [
+      "planning.paths",
+      "biome_creation.paths"
+    ],
+    [
+      "final_terrain.no_cover",
+      "biome_creation.no_cover"
+    ],
+    [
+      "planning.roads",
+      "biome_creation.roads"
+    ],
+    [
+      "final_terrain.forest",
+      "biome_creation.forest"
+    ],
+    [
+      "final_terrain.meadow",
+      "biome_creation.meadow"
+    ],
+    [
+      "final_terrain.cropland",
+      "biome_creation.cropland"
+    ],
+    [
+      "final_terrain.rock",
+      "biome_creation.rock"
+    ],
+    [
+      "final_terrain.glacier",
+      "biome_creation.glacier"
+    ],
+    [
+      "final_terrain.water",
+      "biome_creation.water"
+    ],
+    [
+      "final_terrain.shore",
+      "biome_creation.shore"
+    ],
+    [
+      "final_terrain.riverbed",
+      "biome_creation.riverbed"
+    ],
+    [
+      "final_terrain.crop_type",
+      "biome_creation.crop_type"
+    ],
+    [
+      "final_terrain.crops_preview",
+      "biome_creation.crops_preview"
+    ],
+    [
+      "final_terrain.planning_landcover",
+      "biome_creation.planning_landcover"
+    ],
+    [
+      "terraforming.land_min_m",
+      "climate.land_min_m"
+    ],
+    [
+      "source_data.map_format",
+      "climate.map_format"
+    ],
+    [
+      "source_data.frame",
+      "biome_creation.frame"
+    ],
+    [
+      "planning.paths",
+      "map_mods.paths"
+    ],
+    [
+      "source_data.map_format",
+      "map_mods.map_format"
+    ],
+    [
+      "planning.towns",
+      "map_mods.towns"
+    ]
+  ]
+}

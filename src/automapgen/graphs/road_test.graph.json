@@ -1,0 +1,24 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "road_test",
+  "description": "Experimental, not part of the prototype release. The road test mod (not bound to a map): builds test roads next to every marker street the player builds - given heights, bridges and tunnels, a junction, hairpins - to learn what the game does with them.",
+  "params": {
+    "road_test": {"to": ["script.road_test"], "description": "what the test mod builds"},
+    "map_name": {"to": ["info.map_name"], "description": "middle part of the mod's name"},
+    "publishing": {"to": ["info.publishing", "package.publishing"], "description": "prefix and author"},
+    "map_mod_texts": {"to": ["info.map_mod_texts"], "description": "titles and mod hub texts"}
+  },
+  "nodes": {
+    "info": {"type": "mod.map_info", "params": {"kind": "road_test"}},
+    "script": {"type": "mod.road_test"},
+    "package": {"type": "mod.package", "params": {"severity_remove": "None"}},
+    "folder": {"type": "file.mod", "params": {"copy_to": "staging_area"}}
+  },
+  "links": [
+    ["script.files", "package.content"],
+    ["info.mod_id", "package.mod_id"],
+    ["info.info", "package.info"],
+    ["package.mod", "folder.mod"],
+    ["info.folder", "folder.name"]
+  ]
+}

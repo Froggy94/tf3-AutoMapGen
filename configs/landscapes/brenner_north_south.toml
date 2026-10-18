@@ -1,0 +1,63 @@
+# Landscape "Alpine North-South" for the Brenner map: Alpine Realistic in the north, changing towards the look of the
+# dry southern Alps. Transition mask: 0 north of the Inn valley, rising to 1 at Brixen, 1 south of it. The share of the
+# southern look is mask x factor (factor = share far in the south), set per surface and optionally per biome
+# (1 = valley, 2 = mountain forest, 3 = subalpine, 4 = alpine). Projects extend this file instead of the preset.
+extends = ["../presets/alpine_realistic.toml"]
+
+[defaults.transition]
+name = "Alpine North-South"
+replaces_original_layer = "rivers"            # the base climate's river layer is unused; the mask takes its slot 0
+zone = { kind = "gradient", start_lat = 47.27, end_lat = 46.716 }   # Inn valley at Innsbruck -> Brixen
+
+[defaults.transition.layer]
+key = "transition_mask"
+color = [0.95, 0.6, 0.2]
+slot = 0
+resolution = 16
+
+[defaults.transition.mix]
+kind = "overlay"                                # northern look stays; southern look on top with the share as strength
+noise = { frequency = 0.004, lacunarity = 2, octaves = 2, gain = 0.5 }   # large, gentle variations
+variation = 0.3                                 # strength = share x 0.7 .. 1.3 (valley 30 % -> 21 .. 39 %)
+# Alternative: kind = "patches", noise = {...}, edge = 0.1 - southern look in natural patches instead
+
+[defaults.transition.surfaces.meadow]
+factor = { default = 0.6, by_biome = { 1 = 0.3 } }    # valley 30 %, mountains 60 %
+
+[defaults.transition.surfaces.alpine_grass]
+factor = { default = 0.6 }
+
+[defaults.transition.surfaces.alpine_ground]
+factor = { default = 0.6 }
+
+[defaults.transition.surfaces.rock]
+factor = { default = 0.6 }
+
+# The southern look ("Alpine South"): only its differences to Alpine Realistic
+[defaults.transition.secondary]
+name = "Alpine South"
+
+# Meadow: brown grass, without the light-green patches
+[defaults.transition.secondary.surfaces.meadow.look.base]
+material = { kind = "game", name = "grass_brown" }
+
+[defaults.transition.secondary.surfaces.meadow.look.patches.meadow_patch]
+enabled = false
+
+# Alpine grass the game paints (subalpine/alpine): brown grass (alpine scree patches as in the north)
+[defaults.transition.secondary.surfaces.alpine_grass.look]
+base = { kind = "game", name = "grass_brown" }
+
+# Alpine ground: brown grass with brown grass patches and dry rock patches
+[defaults.transition.secondary.surfaces.alpine_ground.look]
+base = { kind = "game", name = "grass_brown" }
+
+[defaults.transition.secondary.surfaces.alpine_ground.look.patches.subarctic_grass.output]
+material = { kind = "game", name = "grass_brown" }
+
+[defaults.transition.secondary.surfaces.alpine_ground.look.patches.ground_scree.output]
+material = { kind = "game", name = "rock_dry" }
+
+# Rock the game paints on steep slopes and high up: dry rock
+[defaults.transition.secondary.surfaces.rock.look]
+base = { kind = "game", name = "rock_dry" }

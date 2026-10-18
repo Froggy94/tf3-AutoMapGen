@@ -1,0 +1,118 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_planning_towns",
+  "title": "Towns",
+  "description": "Towns at OpenStreetMap places with a population, largest first, at least town_min_distance_game_m apart, on buildable land (dry, gentle slope, no rock or glacier, moved to a suitable spot nearby); start size from the real population. Writes the towns import file.",
+  "inputs": {
+    "draft_heights": "field",
+    "draft_heightmap": "image",
+    "black_m": "number",
+    "draft_water": "mask",
+    "draft_shore": "mask",
+    "draft_glacier": "mask",
+    "draft_rock": "mask",
+    "places": "osm_points",
+    "biome_preview": "image",
+    "map_format": "map_format"
+  },
+  "outputs": {
+    "towns": "town_list"
+  },
+  "params": {
+    "max_towns": {
+      "to": [
+        "towns.max_towns"
+      ],
+      "description": "at most this many towns (0 = from the map area)"
+    },
+    "town_min_distance_game_m": {
+      "to": [
+        "towns.min_distance_game_m"
+      ],
+      "description": "minimum distance between towns"
+    }
+  },
+  "nodes": {
+    "towns": {
+      "type": "towns.plan"
+    },
+    "towns_lua": {
+      "type": "file.text",
+      "params": {
+        "name": "_towns.lua",
+        "copy_to": "towns_industries"
+      }
+    },
+    "towns_json": {
+      "type": "file.json",
+      "params": {
+        "name": "_towns.json",
+        "indent": 1
+      }
+    },
+    "towns_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_towns_preview.png"
+      }
+    }
+  },
+  "links": [
+    [
+      "inputs.draft_heights",
+      "towns.heights"
+    ],
+    [
+      "inputs.draft_heightmap",
+      "towns.heightmap"
+    ],
+    [
+      "inputs.black_m",
+      "towns.black_m"
+    ],
+    [
+      "inputs.draft_water",
+      "towns.water"
+    ],
+    [
+      "inputs.draft_shore",
+      "towns.shore"
+    ],
+    [
+      "inputs.draft_glacier",
+      "towns.glacier"
+    ],
+    [
+      "inputs.draft_rock",
+      "towns.rock"
+    ],
+    [
+      "inputs.places",
+      "towns.places"
+    ],
+    [
+      "inputs.biome_preview",
+      "towns.biome_preview"
+    ],
+    [
+      "inputs.map_format",
+      "towns.map_format"
+    ],
+    [
+      "towns.lua",
+      "towns_lua.document"
+    ],
+    [
+      "towns.towns",
+      "towns_json.document"
+    ],
+    [
+      "towns.preview",
+      "towns_preview_png.image"
+    ],
+    [
+      "towns.towns",
+      "outputs.towns"
+    ]
+  ]
+}

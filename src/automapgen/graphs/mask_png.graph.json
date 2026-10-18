@@ -1,0 +1,21 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "mask_png",
+  "description": "Writes a mask as grey PNG 0/255 (an import layer of the game).",
+  "inputs": {
+    "mask": "mask"
+  },
+  "params": {
+    "name": {"to": ["write.name"], "description": "file name after the project prefix"},
+    "copy_to": {"to": ["write.copy_to"], "description": "named destination of the run that also receives the file"},
+    "skip_empty": {"to": ["write.skip_empty"], "description": "write nothing when the mask is empty"}
+  },
+  "nodes": {
+    "grey": {"type": "image.from_mask"},
+    "write": {"type": "file.png"}
+  },
+  "links": [
+    ["inputs.mask", "grey.mask"],
+    ["grey.image", "write.image"]
+  ]
+}

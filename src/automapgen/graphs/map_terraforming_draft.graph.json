@@ -1,0 +1,193 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_terraforming_draft",
+  "title": "Draft Terrain",
+  "description": "The terrain chain (terrain_core) on the original heights: lakes levelled, real river bands cut in, banks shaped, water/shore/riverbed and land cover layers, fields; with the riverbed groove encoded and decoded as the game will see it. Nothing is written - it is what the planners see.",
+  "inputs": {
+    "land": "field",
+    "landcover": "classes",
+    "river_plan": "river_plan",
+    "land_min_m": "number",
+    "farmland": "osm_areas",
+    "map_format": "map_format",
+    "black_m": "number",
+    "frame": "map_frame"
+  },
+  "outputs": {
+    "draft_planning_landcover": "classes",
+    "draft_water": "mask",
+    "draft_glacier": "mask",
+    "draft_heightmap": "image",
+    "draft_heights": "field",
+    "draft_shore": "mask",
+    "draft_rock": "mask",
+    "draft_forest": "mask",
+    "draft_meadow": "mask",
+    "draft_cropland": "mask"
+  },
+  "params": {
+    "water_sink_m": {
+      "to": [
+        "draft.water_sink_m"
+      ],
+      "description": "core of real water this much below the lowest land"
+    },
+    "real_water_until_m": {
+      "to": [
+        "draft.real_water_until_m"
+      ],
+      "description": "real (game) water only up to this height a.s.l.; above painted water"
+    },
+    "forest_classes": {
+      "to": [
+        "draft.forest_classes"
+      ],
+      "description": "preset"
+    },
+    "meadow_classes": {
+      "to": [
+        "draft.meadow_classes"
+      ],
+      "description": "preset"
+    },
+    "cropland_classes": {
+      "to": [
+        "draft.cropland_classes"
+      ],
+      "description": "preset"
+    },
+    "rock_classes": {
+      "to": [
+        "draft.rock_classes"
+      ],
+      "description": "preset"
+    },
+    "crops": {
+      "to": [
+        "draft.crops"
+      ],
+      "description": "preset: crop types of the fields"
+    }
+  },
+  "nodes": {
+    "draft": {
+      "type": "graph:terrain_core",
+      "note": "the terrain the planners see"
+    },
+    "draft_groove": {
+      "type": "riverbed.groove"
+    },
+    "draft_heightmap": {
+      "type": "heightmap.encode",
+      "params": {
+        "bit_depth": 16
+      }
+    },
+    "draft_heights": {
+      "type": "heightmap.decode",
+      "note": "heights as the game sees them"
+    }
+  },
+  "links": [
+    [
+      "inputs.land",
+      "draft.heights"
+    ],
+    [
+      "inputs.landcover",
+      "draft.landcover"
+    ],
+    [
+      "inputs.river_plan",
+      "draft.rivers"
+    ],
+    [
+      "inputs.land_min_m",
+      "draft.land_min_m"
+    ],
+    [
+      "inputs.farmland",
+      "draft.farmland"
+    ],
+    [
+      "draft.heights",
+      "draft_groove.heights"
+    ],
+    [
+      "draft.centre",
+      "draft_groove.centre"
+    ],
+    [
+      "inputs.land_min_m",
+      "draft_groove.land_min_m"
+    ],
+    [
+      "inputs.map_format",
+      "draft_groove.map_format"
+    ],
+    [
+      "draft_groove.heights",
+      "draft_heightmap.heights"
+    ],
+    [
+      "inputs.black_m",
+      "draft_heightmap.black_m"
+    ],
+    [
+      "draft_heightmap.image",
+      "draft_heights.image"
+    ],
+    [
+      "inputs.black_m",
+      "draft_heights.black_m"
+    ],
+    [
+      "draft_heightmap.white_m",
+      "draft_heights.white_m"
+    ],
+    [
+      "inputs.frame",
+      "draft_heights.frame"
+    ],
+    [
+      "draft.planning_landcover",
+      "outputs.draft_planning_landcover"
+    ],
+    [
+      "draft.water",
+      "outputs.draft_water"
+    ],
+    [
+      "draft.glacier",
+      "outputs.draft_glacier"
+    ],
+    [
+      "draft_heightmap.image",
+      "outputs.draft_heightmap"
+    ],
+    [
+      "draft_heights.heights",
+      "outputs.draft_heights"
+    ],
+    [
+      "draft.shore",
+      "outputs.draft_shore"
+    ],
+    [
+      "draft.rock",
+      "outputs.draft_rock"
+    ],
+    [
+      "draft.forest",
+      "outputs.draft_forest"
+    ],
+    [
+      "draft.meadow",
+      "outputs.draft_meadow"
+    ],
+    [
+      "draft.cropland",
+      "outputs.draft_cropland"
+    ]
+  ]
+}

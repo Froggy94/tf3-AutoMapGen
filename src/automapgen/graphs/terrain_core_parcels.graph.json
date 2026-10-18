@@ -1,0 +1,60 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "terrain_core_parcels",
+  "description": "The terrain chain with fields from the landcover instead of OSM: narrow meadow and forest strips between fields become cropland, the cropland is cut into parcels (along the contour lines on slopes), one crop per parcel; farm grid for farms.",
+  "extends": "terrain_core",
+  "outputs": {
+    "farm_grid": "farm_grid"
+  },
+  "params": {
+    "crops": {"to": ["parcels.crops"], "description": "preset: crop types of the fields"},
+    "forest_classes": {"to": ["forest_free.codes"], "description": "preset: landcover classes of the forest layer"},
+    "meadow_classes": {"to": ["meadow_free.codes"], "description": "preset: landcover classes of the meadow layer"},
+    "cropland_classes": {"to": ["cropland_free.codes"], "description": "preset: landcover classes of the cropland"}
+  },
+  "remove": ["fields", "wc_cropland", "meadow_all", "cropland", "crops_preview", "forest", "meadow", "cut_forest"],
+  "nodes": {
+    "keep_classes": {"type": "classes.select", "params": {"codes": [50]}, "note": "settlements never become cropland"},
+    "keep": {"type": "mask.to_map"},
+    "cropland_free": {"type": "graph:class_mask", "params": {"codes": [40]}},
+    "meadow_free": {"type": "graph:class_mask", "params": {"codes": [20, 30, 50, 90, 100]}},
+    "forest_free": {"type": "graph:class_mask", "params": {"codes": [10]}},
+    "meadow_gaps": {"type": "farmland.close_gap", "params": {"gap_game_m": 100}},
+    "forest_gaps": {"type": "farmland.close_gap", "params": {"gap_game_m": 50}},
+    "cropland": {"type": "mask.subtract", "note": "without the riverbed"},
+    "meadow": {"type": "mask.subtract", "note": "without the riverbed"},
+    "forest": {"type": "mask.subtract", "note": "without the riverbed and its clearing"},
+    "parcels": {"type": "farmland.parcels"}
+  },
+  "links": [
+    ["water.landcover", "keep_classes.classes"],
+    ["keep_classes.mask", "keep.mask"],
+    ["water.landcover", "cropland_free.landcover"],
+    ["water_layers.no_cover", "cropland_free.cut"],
+    ["water.landcover", "meadow_free.landcover"],
+    ["water_layers.no_cover", "meadow_free.cut"],
+    ["water.landcover", "forest_free.landcover"],
+    ["water_layers.no_cover", "forest_free.cut"],
+    ["cropland_free.mask", "meadow_gaps.cropland"],
+    ["meadow_free.mask", "meadow_gaps.other"],
+    ["keep.mask", "meadow_gaps.keep"],
+    ["meadow_gaps.cropland", "forest_gaps.cropland"],
+    ["forest_free.mask", "forest_gaps.other"],
+    ["keep.mask", "forest_gaps.keep"],
+    ["forest_gaps.cropland", "cropland.mask"],
+    ["riverbed.bed", "cropland.minus"],
+    ["meadow_gaps.other", "meadow.mask"],
+    ["riverbed.bed", "meadow.minus"],
+    ["forest_gaps.other", "forest.mask"],
+    ["forest_clear.mask", "forest.minus"],
+    ["cropland.mask", "parcels.cropland"],
+    ["water.heights", "parcels.heights"],
+
+    ["forest.mask", "outputs.forest"],
+    ["meadow.mask", "outputs.meadow"],
+    ["cropland.mask", "outputs.cropland"],
+    ["parcels.crop_type", "outputs.crop_type"],
+    ["parcels.preview", "outputs.crops_preview"],
+    ["parcels.farm_grid", "outputs.farm_grid"]
+  ]
+}

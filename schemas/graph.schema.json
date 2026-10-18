@@ -1,0 +1,193 @@
+{
+  "$defs": {
+    "ExposedParam": {
+      "additionalProperties": false,
+      "description": "A parameter the graph offers to the outside; it sets the node parameters listed in `to` (`node.param`).",
+      "properties": {
+        "to": {
+          "items": {
+            "type": "string"
+          },
+          "title": "To",
+          "type": "array"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        }
+      },
+      "required": [
+        "to"
+      ],
+      "title": "ExposedParam",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Link": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "type": "array"
+    },
+    "NodeEntry": {
+      "additionalProperties": false,
+      "description": "One node of a graph: its type (node type id or `graph:<id>`), parameter values and a note for readers.",
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "NodeEntry",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A graph: interface, nodes, links, exposed parameters - or, with `extends`, the differences to a base graph.",
+  "properties": {
+    "$schema": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "$Schema"
+    },
+    "format": {
+      "const": 1,
+      "default": 1,
+      "title": "Format",
+      "type": "integer"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "default": "",
+      "title": "Title",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "extends": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extends"
+    },
+    "inputs": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Inputs",
+      "type": "object"
+    },
+    "outputs": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Outputs",
+      "type": "object"
+    },
+    "params": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ExposedParam"
+      },
+      "title": "Params",
+      "type": "object"
+    },
+    "nodes": {
+      "additionalProperties": {
+        "$ref": "#/$defs/NodeEntry"
+      },
+      "title": "Nodes",
+      "type": "object"
+    },
+    "remove": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Remove",
+      "type": "array"
+    },
+    "links": {
+      "items": {
+        "$ref": "#/$defs/Link"
+      },
+      "title": "Links",
+      "type": "array"
+    },
+    "unlink": {
+      "items": {
+        "$ref": "#/$defs/Link"
+      },
+      "title": "Unlink",
+      "type": "array"
+    },
+    "ui": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Ui",
+      "type": "object"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "title": "GraphDocument",
+  "type": "object"
+}

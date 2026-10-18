@@ -1,0 +1,212 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_source_data",
+  "title": "Source Data",
+  "description": "Everything read from outside, laid onto the map: the game map's size and scale (map format), the elevation model (a GeoTIFF or a download from OpenTopography) cropped, rotated and resampled to the heightmap grid (the map frame; once more without levelling for the rivers), ESA WorldCover land cover (10 m, most frequent class per pixel), from OpenStreetMap the waterways, fields, places, paths and country roads touching the map, and the production rules of the game's industries.",
+  "outputs": {
+    "heights": "field",
+    "landcover": "classes",
+    "original_heights": "field",
+    "waterways": "osm_ways",
+    "frame": "map_frame",
+    "farmland": "osm_areas",
+    "map_format": "map_format",
+    "osm_paths": "osm_lines",
+    "places": "osm_points",
+    "osm_roads": "osm_lines",
+    "industry_rules": "industry_rules"
+  },
+  "params": {
+    "dem_path": {
+      "to": [
+        "dem.path",
+        "original.path"
+      ],
+      "description": "GeoTIFF of the elevation model (empty: download)"
+    },
+    "crop": {
+      "to": [
+        "dem.crop",
+        "original.crop"
+      ],
+      "description": "part of the elevation model (WGS84 degrees)"
+    },
+    "dem_download": {
+      "to": [
+        "dem.download",
+        "original.download"
+      ],
+      "description": "without dem_path: the elevation model to download from OpenTopography"
+    },
+    "game_width_km": {
+      "to": [
+        "format.game_width_km"
+      ]
+    },
+    "game_height_km": {
+      "to": [
+        "format.game_height_km"
+      ]
+    },
+    "scale": {
+      "to": [
+        "format.scale"
+      ],
+      "description": "scale 1:scale"
+    },
+    "rotation_deg": {
+      "to": [
+        "on_map.rotation_deg",
+        "original.rotation_deg"
+      ]
+    }
+  },
+  "nodes": {
+    "format": {
+      "type": "map.format"
+    },
+    "dem": {
+      "type": "elevation.read"
+    },
+    "on_map": {
+      "type": "elevation.to_map"
+    },
+    "original": {
+      "type": "elevation.read_on_map"
+    },
+    "landcover": {
+      "type": "landcover.worldcover"
+    },
+    "waterways": {
+      "type": "osm.waterways"
+    },
+    "farmland": {
+      "type": "osm.areas",
+      "params": {
+        "tags": [
+          [
+            "landuse",
+            "farmland"
+          ]
+        ]
+      }
+    },
+    "places": {
+      "type": "osm.points"
+    },
+    "path_ways": {
+      "type": "osm.highways",
+      "params": {
+        "types": [
+          "track",
+          "path",
+          "footway",
+          "bridleway"
+        ]
+      }
+    },
+    "road_ways": {
+      "type": "osm.highways",
+      "params": {
+        "types": [
+          "trunk",
+          "primary",
+          "secondary",
+          "tertiary",
+          "unclassified",
+          "trunk_link",
+          "primary_link",
+          "secondary_link",
+          "tertiary_link",
+          "unclassified_link"
+        ]
+      }
+    },
+    "industry_rules": {
+      "type": "game.industry_rules",
+      "note": "production rules from the game's industry files"
+    }
+  },
+  "links": [
+    [
+      "dem.source",
+      "on_map.source"
+    ],
+    [
+      "format.format",
+      "on_map.map_format"
+    ],
+    [
+      "on_map.heights",
+      "outputs.heights"
+    ],
+    [
+      "on_map.frame",
+      "landcover.frame"
+    ],
+    [
+      "landcover.landcover",
+      "outputs.landcover"
+    ],
+    [
+      "format.format",
+      "original.map_format"
+    ],
+    [
+      "original.heights",
+      "outputs.original_heights"
+    ],
+    [
+      "on_map.frame",
+      "waterways.frame"
+    ],
+    [
+      "waterways.ways",
+      "outputs.waterways"
+    ],
+    [
+      "on_map.frame",
+      "outputs.frame"
+    ],
+    [
+      "on_map.frame",
+      "farmland.frame"
+    ],
+    [
+      "farmland.areas",
+      "outputs.farmland"
+    ],
+    [
+      "format.format",
+      "outputs.map_format"
+    ],
+    [
+      "on_map.frame",
+      "places.frame"
+    ],
+    [
+      "on_map.frame",
+      "path_ways.frame"
+    ],
+    [
+      "on_map.frame",
+      "road_ways.frame"
+    ],
+    [
+      "path_ways.lines",
+      "outputs.osm_paths"
+    ],
+    [
+      "places.points",
+      "outputs.places"
+    ],
+    [
+      "road_ways.lines",
+      "outputs.osm_roads"
+    ],
+    [
+      "industry_rules.rules",
+      "outputs.industry_rules"
+    ]
+  ]
+}

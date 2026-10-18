@@ -1,0 +1,30 @@
+# Python and tools
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+
+# Local data - never versioned: original game files (not ours to publish), downloads, caches, run output,
+# machine-specific settings
+/game_originals/
+/cache/
+/downloads/
+/output/
+/local/
+*.local.toml
+*.log
+
+# Internal working documents (own private repository, cloned here) and the assistant's local instructions
+/private/
+CLAUDE.local.md

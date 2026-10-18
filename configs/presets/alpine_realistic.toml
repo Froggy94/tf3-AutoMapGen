@@ -1,0 +1,413 @@
+# Climate preset "Alpine Realistic" (temperate base climate): named values for the map graphs. A graph uses a value
+# where it exposes a parameter of that name ([defaults]: unused values are ignored). Projects extend the preset:
+# extends = ["../presets/alpine_realistic.toml"]. Taken over from the legacy project
+# (configs/climates/alpine_realistic.toml: [biomes], [slots.layers.*] landcover, [crops]).
+
+extends = ["../industries/temperate.toml",   # the industry planning of the temperate climate
+           "../publishing.toml", "../mod_texts/alpine.toml",   # names and texts of the published climate mod
+           "../waterfall.toml",   # waterfall brushes of the climate mod
+           "../map_mods.toml"]   # the map's own mods: roads, paths as streets, industry names
+
+[defaults]
+# Biomes 1-4 of the game by effective height (height + steepness bonus + noise) and the mountain mask
+biome_limits_m = [1000, 1500, 1800]
+mountains_from_m = 1800
+
+# Import layers and their ESA WorldCover classes
+forest_classes = [10]
+meadow_classes = [20, 30, 50, 90, 100]
+cropland_classes = [40]
+rock_classes = [60]
+
+# Crop types of the fields (each crop key needs the import layer crop_<key>); grass = base area of the cropland
+[defaults.crops]
+shares = { wheat = 0.4, corn = 0.2, soil = 0.1 }
+by_size = [{ min_game_ha = 1.5, shares = { wheat = 0.5, corn = 0.3, grass = 0.1, soil = 0.1 } },
+           { min_game_ha = 0.3, shares = { grass = 0.6, wheat = 0.3, soil = 0.1 } },
+           { min_game_ha = 0, shares = { grass = 1 } }]
+
+[defaults.crops.osm_tags]   # OSM crop= -> crop key ("" = grass)
+maize = "corn"
+corn = "corn"
+grass = ""
+hay = ""
+wheat = "wheat"
+barley = "wheat"
+rye = "wheat"
+oats = "wheat"
+cereal = "wheat"
+
+# Economy of the climate mod (nodes/climate/preset.py: EconomySettings)
+[defaults.economy]
+custom = false                          # own economy: no oil platforms, refinery at oil wells, glass works at sand pits
+extra_industries = false                # also unlock industries and cargos of other climates (needs DHE Industries)
+water_industry_fraction = "3.0 / 41.0"  # share of water industries among new industries (temperate: 6 / 41)
+name = "Alps"
+name_with_extra_industries = "Alps (all industries)"
+removed_industries = ["oil_platform"]
+
+# The climate mod: landscape type as data (nodes/climate/preset.py: ClimatePreset). Elevations in m a.s.l.;
+# optional parts are switched off with enabled = false (or left out).
+[defaults.climate]
+name = "Alpine Realistic"
+base_climate = "temperate"
+no_cover_below = -0.5
+top = 100000
+map_preview_level = 1200
+
+[defaults.climate.heights]
+scree_start = 2100
+scree_full = 2300
+rock_start = 2200
+rock_full = 2500
+snow_hollow_start = 2400
+snow_hollow_full = 2600
+snow_start = 2500
+snow_full = 2600
+trees_dense_until = 1900
+trees_sparse = 1900
+tree_line = 2100
+mountains_min = 1000
+
+[defaults.climate.slots]
+original = { rivers = 0, mountains = 1 }
+
+[defaults.climate.slots.layers.forest]
+color = [0.1, 0.45, 0.15]
+slot = 2
+resolution = 8
+
+[defaults.climate.slots.layers.meadow]
+color = [0.55, 0.85, 0.35]
+slot = 3
+resolution = 16
+
+[defaults.climate.slots.layers.cropland]
+color = [0.85, 0.75, 0.3]
+slot = 4
+resolution = 16
+
+[defaults.climate.slots.layers.rock]
+color = [0.55, 0.55, 0.55]
+slot = 5
+resolution = 16
+
+[defaults.climate.slots.layers.riverbed]
+color = [0.6, 0.55, 0.45]
+slot = 6
+resolution = 8
+
+[defaults.climate.slots.layers.water]
+color = [0, 0.63, 0.9]
+slot = 7
+resolution = 8
+
+[defaults.climate.slots.layers.shore]
+color = [0.8, 0.65, 0.45]
+slot = 8
+resolution = 8
+
+[defaults.climate.slots.layers.crop_corn]
+color = [0.95, 0.55, 0.1]
+slot = 9
+resolution = 8
+
+[defaults.climate.slots.layers.crop_wheat]
+color = [0.9, 0.8, 0.3]
+slot = 10
+resolution = 8
+
+[defaults.climate.slots.layers.crop_soil]
+color = [0.45, 0.3, 0.2]
+slot = 11
+resolution = 8
+
+[defaults.climate.surfaces.meadow]
+
+[defaults.climate.surfaces.meadow.area]
+kind = "product"
+first = { kind = "layer", key = "meadow", hard = false }
+second = { kind = "game", name = "lowland" }
+
+[defaults.climate.surfaces.meadow.look.base]
+kind = "output"
+material = { kind = "game", name = "grass_green" }
+order = 5
+dither = true
+
+[defaults.climate.surfaces.meadow.look.patches.meadow_patch]
+
+[defaults.climate.surfaces.meadow.look.patches.meadow_patch.output]
+kind = "output"
+material = { kind = "game", name = "grass_light_green" }
+order = 6
+dither = true
+
+[defaults.climate.surfaces.meadow.look.patches.meadow_patch.patch]
+share = 0.3
+noise = { frequency = 0.01, lacunarity = 3, octaves = 3, gain = 0.5 }
+center_offset = 0.05
+edge = 0.1
+intensity = { kind = "constant", value = 1 }
+
+[defaults.climate.surfaces.alpine_grass]
+area = { kind = "game", name = "alpine_grass" }
+
+[defaults.climate.surfaces.alpine_grass.look.patches.alpine_scree]
+
+[defaults.climate.surfaces.alpine_grass.look.patches.alpine_scree.output]
+kind = "output"
+material = { kind = "game", name = "scree" }
+order = 900
+dither = true
+
+[defaults.climate.surfaces.alpine_grass.look.patches.alpine_scree.patch]
+share = 0.3
+noise = { frequency = 0.01, lacunarity = 2.5, octaves = 3, gain = 0.5 }
+center_offset = 0.05
+edge = 0.1
+
+[defaults.climate.surfaces.alpine_grass.look.patches.alpine_scree.patch.intensity]
+kind = "varying"
+low = 0.4
+high = 0.7
+noise = { frequency = 0.03, lacunarity = 2, octaves = 2, gain = 0.5 }
+
+[defaults.climate.surfaces.alpine_ground]
+area = { kind = "game", name = "alpine_ground" }
+
+# Alpine ground (biome 4 x mountain mask): alpine grass with subarctic grass and scree patches
+[defaults.climate.surfaces.alpine_ground.look]
+base = { kind = "game", name = "grass_alpine" }
+
+[defaults.climate.surfaces.alpine_ground.look.patches.subarctic_grass]
+
+[defaults.climate.surfaces.alpine_ground.look.patches.subarctic_grass.output]
+kind = "output"
+material = { kind = "game", name = "gr_br_sub" }
+order = 920
+dither = true
+
+[defaults.climate.surfaces.alpine_ground.look.patches.subarctic_grass.patch]
+share = 0.35
+noise = { frequency = 0.006, lacunarity = 2.5, octaves = 3, gain = 0.5 }
+center_offset = 0.05
+edge = 0.35
+slope_limit = { max_deg = 35, fade_deg = 5 }
+
+[defaults.climate.surfaces.alpine_ground.look.patches.subarctic_grass.patch.intensity]
+kind = "varying"
+low = 0.7
+high = 1
+noise = { frequency = 0.018, lacunarity = 2, octaves = 2, gain = 0.5 }
+
+[defaults.climate.surfaces.alpine_ground.look.patches.ground_scree]
+
+[defaults.climate.surfaces.alpine_ground.look.patches.ground_scree.output]
+kind = "output"
+material = { kind = "game", name = "scree" }
+order = 950
+dither = true
+
+[defaults.climate.surfaces.alpine_ground.look.patches.ground_scree.patch]
+share = 0.32
+noise = { frequency = 0.005, lacunarity = 2.5, octaves = 3, gain = 0.5 }
+center_offset = 0.05
+edge = 0.1
+
+[defaults.climate.surfaces.alpine_ground.look.patches.ground_scree.patch.intensity]
+kind = "varying"
+low = 0.24
+high = 0.56
+noise = { frequency = 0.015, lacunarity = 2, octaves = 2, gain = 0.5 }
+
+[defaults.climate.surfaces.field]
+area = { kind = "layer", key = "cropland", hard = false }
+
+[defaults.climate.surfaces.field.look.base]
+kind = "output"
+material = { kind = "game", name = "grass_dark_green" }
+order = 50
+dither = true
+
+[defaults.climate.surfaces.field.look.patches.soil]
+
+[defaults.climate.surfaces.field.look.patches.soil.output]
+kind = "output"
+material = { kind = "game", name = "soil_01" }
+order = 60
+dither = true
+
+[defaults.climate.surfaces.field.look.patches.soil.patch]
+share = 0
+noise = { frequency = 0.004, lacunarity = 2, octaves = 2, gain = 0.5 }
+center_offset = 0.025
+edge = 0.05
+intensity = { kind = "constant", value = 1 }
+
+[defaults.climate.surfaces.crop_corn]
+area = { kind = "layer", key = "crop_corn", hard = true }
+
+[defaults.climate.surfaces.crop_corn.look]
+
+[defaults.climate.surfaces.crop_corn.look.base]
+kind = "output"
+material = { kind = "game", name = "corn" }
+order = 55
+dither = false
+
+[defaults.climate.surfaces.crop_wheat]
+area = { kind = "layer", key = "crop_wheat", hard = true }
+
+[defaults.climate.surfaces.crop_wheat.look]
+
+[defaults.climate.surfaces.crop_wheat.look.base]
+kind = "output"
+material = { kind = "game", name = "wheat" }
+order = 55
+dither = false
+
+[defaults.climate.surfaces.crop_soil]
+area = { kind = "layer", key = "crop_soil", hard = true }
+
+[defaults.climate.surfaces.crop_soil.look]
+
+[defaults.climate.surfaces.crop_soil.look.base]
+kind = "output"
+material = { kind = "game", name = "soil_01" }
+order = 55
+dither = false
+
+[defaults.climate.surfaces.water]
+area = { kind = "layer", key = "water", hard = true }
+
+[defaults.climate.surfaces.water.look]
+
+[defaults.climate.surfaces.water.look.base]
+kind = "output"
+material = { kind = "game", name = "water_dirty" }
+order = 15000
+dither = false
+
+[defaults.climate.surfaces.waterfall]
+
+[defaults.climate.surfaces.waterfall.area]
+kind = "steep_water"
+water = { kind = "layer", key = "water", hard = true }
+steepness = { start = 0.02, full = 0.05 }
+blur_sigma = 8
+blur_size = 25
+edge_sigma = 3
+edge_size = 9
+edge_inner = 0.95
+gain = 2.5
+
+[defaults.climate.surfaces.waterfall.look]
+
+[defaults.climate.surfaces.waterfall.look.base]
+kind = "output"
+material = { kind = "mod", folder = "dhe_waterfall", file = "dhe_waterfall_mix" }
+order = 15500
+dither = true
+
+[defaults.climate.surfaces.shore]
+area = { kind = "layer", key = "shore", hard = false }
+
+[defaults.climate.surfaces.shore.look.base]
+kind = "output"
+material = { kind = "game", name = "scree" }
+order = 450
+dither = true
+
+[defaults.climate.surfaces.shore.look.patches.shore_gravel]
+
+[defaults.climate.surfaces.shore.look.patches.shore_gravel.output]
+kind = "output"
+material = { kind = "game", name = "gravel_01" }
+order = 460
+dither = true
+
+[defaults.climate.surfaces.shore.look.patches.shore_gravel.patch]
+share = 0.4
+noise = { frequency = 0.05, lacunarity = 2.5, octaves = 3, gain = 0.5 }
+center_offset = 0.05
+edge = 0.1
+
+[defaults.climate.surfaces.shore.look.patches.shore_gravel.patch.intensity]
+kind = "varying"
+low = 0.3
+high = 0.5
+noise = { frequency = 0.15, lacunarity = 2, octaves = 2, gain = 0.5 }
+
+[defaults.climate.surfaces.riverbed]
+area = { kind = "layer", key = "riverbed", hard = false }
+
+[defaults.climate.surfaces.riverbed.look.base]
+kind = "output"
+material = { kind = "game", name = "scree" }
+order = 9000
+dither = true
+
+[defaults.climate.surfaces.riverbed.look.patches.riverbed_rock]
+
+[defaults.climate.surfaces.riverbed.look.patches.riverbed_rock.output]
+kind = "output"
+material = { kind = "game", name = "rock" }
+order = 10500
+dither = true
+
+[defaults.climate.surfaces.riverbed.look.patches.riverbed_rock.patch]
+share = 0.3
+noise = { frequency = 0.05, lacunarity = 2.5, octaves = 3, gain = 0.5 }
+center_offset = 0.05
+edge = 0.1
+intensity = { kind = "constant", value = 0.5 }
+
+[defaults.climate.ground]
+rock_layer = "rock"
+forest_floor_layer = "forest"
+steep_rock = { start = 0.9, full = 0.95 }
+
+[defaults.climate.forest]
+density = 0.1
+single_trees_outside = 0
+index_lowland = 6
+index_hills = 3
+index_conifer = 7
+conifer_start = 800
+conifer_full = 900
+conifer_share_below = 0.4
+max_steepness = 0.8
+
+[defaults.climate.forest.classic]
+enabled = false
+pine_set = "dhe_classic_pine"
+broadleaf_set = "dhe_classic_broadleaf"
+pine_share = 0.3
+pine_max = 1400
+broadleaf_share = 0.35
+noise_frequency = 0.03
+
+[defaults.climate.forest.classic.sets]
+dhe_classic_pine = [20, ["sct_pn_01"]]
+dhe_classic_broadleaf = [21, ["eu_lnd_01", "sgr_mpl_01", "shgl_oak_01"]]
+
+[defaults.climate.rocks]
+max_density = 0.45
+mountain = 0.5
+forest = 0.3
+shore = 0.3
+riverbed = 0.5
+waterfall_test = false
+shore_like_riverbed = true
+sets = [["granite", 0.4], ["tundra_stone", 0.3], ["coast_stone", 0.3]]
+patch_share = 0.3
+patch_frequency = 0.02
+patch_edge = 0.2
+waterfall = { strength = 0.5, surface = "waterfall" }
+
+[defaults.climate.surfaces.rock]
+area = { kind = "game", name = "rock" }
+
+[defaults.climate.surfaces.rock.look]
+base = { kind = "game", name = "rock" }

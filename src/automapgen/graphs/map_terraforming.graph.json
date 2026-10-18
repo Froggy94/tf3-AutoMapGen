@@ -1,0 +1,255 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_terraforming",
+  "title": "Terraforming",
+  "description": "The first, draft terrain the planners work on: height references (lowest land = game height 0, bottom of real water), biomes 1-4 and the mountain mask from the heights, the rivers from OpenStreetMap split into real water (only in the lowest valleys) and painted water, and the draft terrain with shaped water, banks and layers.",
+  "inputs": {
+    "heights": "field",
+    "landcover": "classes",
+    "original_heights": "field",
+    "waterways": "osm_ways",
+    "frame": "map_frame",
+    "farmland": "osm_areas",
+    "map_format": "map_format"
+  },
+  "outputs": {
+    "biomes": "classes",
+    "mountains": "mask",
+    "draft_planning_landcover": "classes",
+    "draft_water": "mask",
+    "draft_glacier": "mask",
+    "biome_preview": "image",
+    "draft_heightmap": "image",
+    "draft_heights": "field",
+    "black_m": "number",
+    "draft_shore": "mask",
+    "draft_rock": "mask",
+    "draft_forest": "mask",
+    "draft_meadow": "mask",
+    "draft_cropland": "mask",
+    "land": "field",
+    "worldcover_water": "mask",
+    "land_min_m": "number",
+    "river_plan": "river_plan"
+  },
+  "params": {
+    "min_height_m": {
+      "to": [
+        "elevation.min_height_m"
+      ],
+      "description": "lowest land; empty = lowest point"
+    },
+    "water_sink_m": {
+      "to": [
+        "elevation.water_sink_m",
+        "draft_terrain.water_sink_m"
+      ],
+      "description": "core of real water this much below the lowest land"
+    },
+    "real_water_until_m": {
+      "to": [
+        "rivers_and_water.real_water_until_m",
+        "draft_terrain.real_water_until_m"
+      ],
+      "description": "real (game) water only up to this height a.s.l.; above painted water"
+    },
+    "biome_limits_m": {
+      "to": [
+        "biomes.biome_limits_m"
+      ],
+      "description": "preset: borders between biome 1|2, 2|3, 3|4 (m)"
+    },
+    "mountains_from_m": {
+      "to": [
+        "biomes.mountains_from_m"
+      ],
+      "description": "preset: mountain mask from (m)"
+    },
+    "forest_classes": {
+      "to": [
+        "draft_terrain.forest_classes"
+      ],
+      "description": "preset"
+    },
+    "meadow_classes": {
+      "to": [
+        "draft_terrain.meadow_classes"
+      ],
+      "description": "preset"
+    },
+    "cropland_classes": {
+      "to": [
+        "draft_terrain.cropland_classes"
+      ],
+      "description": "preset"
+    },
+    "rock_classes": {
+      "to": [
+        "draft_terrain.rock_classes"
+      ],
+      "description": "preset"
+    },
+    "crops": {
+      "to": [
+        "draft_terrain.crops"
+      ],
+      "description": "preset: crop types of the fields"
+    }
+  },
+  "nodes": {
+    "elevation": {
+      "type": "graph:map_terraforming_elevation"
+    },
+    "biomes": {
+      "type": "graph:map_terraforming_biomes"
+    },
+    "rivers_and_water": {
+      "type": "graph:map_terraforming_rivers"
+    },
+    "draft_terrain": {
+      "type": "graph:map_terraforming_draft"
+    }
+  },
+  "links": [
+    [
+      "inputs.heights",
+      "elevation.heights"
+    ],
+    [
+      "elevation.land",
+      "biomes.land"
+    ],
+    [
+      "biomes.biomes",
+      "outputs.biomes"
+    ],
+    [
+      "biomes.mountains",
+      "outputs.mountains"
+    ],
+    [
+      "inputs.landcover",
+      "rivers_and_water.landcover"
+    ],
+    [
+      "inputs.original_heights",
+      "elevation.original_heights"
+    ],
+    [
+      "inputs.waterways",
+      "rivers_and_water.waterways"
+    ],
+    [
+      "inputs.frame",
+      "rivers_and_water.frame"
+    ],
+    [
+      "inputs.original_heights",
+      "rivers_and_water.original_heights"
+    ],
+    [
+      "elevation.valley_floor",
+      "rivers_and_water.valley_floor"
+    ],
+    [
+      "elevation.land_min_m",
+      "rivers_and_water.land_min_m"
+    ],
+    [
+      "elevation.land",
+      "draft_terrain.land"
+    ],
+    [
+      "inputs.landcover",
+      "draft_terrain.landcover"
+    ],
+    [
+      "rivers_and_water.river_plan",
+      "draft_terrain.river_plan"
+    ],
+    [
+      "elevation.land_min_m",
+      "draft_terrain.land_min_m"
+    ],
+    [
+      "inputs.farmland",
+      "draft_terrain.farmland"
+    ],
+    [
+      "inputs.map_format",
+      "draft_terrain.map_format"
+    ],
+    [
+      "elevation.black_m",
+      "draft_terrain.black_m"
+    ],
+    [
+      "inputs.frame",
+      "draft_terrain.frame"
+    ],
+    [
+      "draft_terrain.draft_planning_landcover",
+      "outputs.draft_planning_landcover"
+    ],
+    [
+      "draft_terrain.draft_water",
+      "outputs.draft_water"
+    ],
+    [
+      "draft_terrain.draft_glacier",
+      "outputs.draft_glacier"
+    ],
+    [
+      "biomes.biome_preview",
+      "outputs.biome_preview"
+    ],
+    [
+      "draft_terrain.draft_heightmap",
+      "outputs.draft_heightmap"
+    ],
+    [
+      "draft_terrain.draft_heights",
+      "outputs.draft_heights"
+    ],
+    [
+      "elevation.black_m",
+      "outputs.black_m"
+    ],
+    [
+      "draft_terrain.draft_shore",
+      "outputs.draft_shore"
+    ],
+    [
+      "draft_terrain.draft_rock",
+      "outputs.draft_rock"
+    ],
+    [
+      "draft_terrain.draft_forest",
+      "outputs.draft_forest"
+    ],
+    [
+      "draft_terrain.draft_meadow",
+      "outputs.draft_meadow"
+    ],
+    [
+      "draft_terrain.draft_cropland",
+      "outputs.draft_cropland"
+    ],
+    [
+      "elevation.land",
+      "outputs.land"
+    ],
+    [
+      "rivers_and_water.worldcover_water",
+      "outputs.worldcover_water"
+    ],
+    [
+      "elevation.land_min_m",
+      "outputs.land_min_m"
+    ],
+    [
+      "rivers_and_water.river_plan",
+      "outputs.river_plan"
+    ]
+  ]
+}

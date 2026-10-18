@@ -1,0 +1,310 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_final_terrain",
+  "title": "Final Terrain",
+  "description": "The terrain that is written: evened out around towns (tilted plane) and industries (level), the terrain chain again on the settled heights (water, banks, layers), country roads and paths worked into the terrain (level across, smoothed grade-limited profile, cut and fill), the riverbed groove, and the 16-bit heightmap with its height references.",
+  "inputs": {
+    "land": "field",
+    "worldcover_water": "mask",
+    "land_min_m": "number",
+    "map_format": "map_format",
+    "towns": "town_list",
+    "industries": "industry_list",
+    "landcover": "classes",
+    "river_plan": "river_plan",
+    "farmland": "osm_areas",
+    "roads": "road_lines",
+    "paths": "path_plan",
+    "black_m": "number"
+  },
+  "outputs": {
+    "no_cover": "mask",
+    "forest": "mask",
+    "meadow": "mask",
+    "cropland": "mask",
+    "rock": "mask",
+    "glacier": "mask",
+    "water": "mask",
+    "shore": "mask",
+    "riverbed": "mask",
+    "crop_type": "classes",
+    "crops_preview": "image",
+    "planning_landcover": "classes",
+    "heightmap": "image",
+    "white_m": "number"
+  },
+  "params": {
+    "water_sink_m": {
+      "to": [
+        "final.water_sink_m"
+      ],
+      "description": "core of real water this much below the lowest land"
+    },
+    "max_height_m": {
+      "to": [
+        "heightmap.max_height_m"
+      ],
+      "description": "white of the heightmap; empty = highest point"
+    },
+    "real_water_until_m": {
+      "to": [
+        "final.real_water_until_m"
+      ],
+      "description": "real (game) water only up to this height a.s.l.; above painted water"
+    },
+    "forest_classes": {
+      "to": [
+        "final.forest_classes"
+      ],
+      "description": "preset"
+    },
+    "meadow_classes": {
+      "to": [
+        "final.meadow_classes"
+      ],
+      "description": "preset"
+    },
+    "cropland_classes": {
+      "to": [
+        "final.cropland_classes"
+      ],
+      "description": "preset"
+    },
+    "rock_classes": {
+      "to": [
+        "final.rock_classes"
+      ],
+      "description": "preset"
+    },
+    "crops": {
+      "to": [
+        "final.crops"
+      ],
+      "description": "preset: crop types of the fields"
+    }
+  },
+  "nodes": {
+    "settle": {
+      "type": "settle.terrain"
+    },
+    "settle_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_settle_preview.png"
+      }
+    },
+    "final": {
+      "type": "graph:terrain_core"
+    },
+    "road_terrain": {
+      "type": "roads.terrain"
+    },
+    "path_terrain": {
+      "type": "paths.terrain"
+    },
+    "groove": {
+      "type": "riverbed.groove"
+    },
+    "heightmap": {
+      "type": "heightmap.encode",
+      "params": {
+        "bit_depth": 16
+      }
+    },
+    "heightmap_png": {
+      "type": "file.png",
+      "params": {
+        "name": ".png",
+        "copy_to": "heightmaps"
+      }
+    },
+    "height_range": {
+      "type": "file.height_range",
+      "params": {
+        "name": "_height_range.json"
+      }
+    }
+  },
+  "links": [
+    [
+      "inputs.land",
+      "settle.heights"
+    ],
+    [
+      "inputs.worldcover_water",
+      "settle.water"
+    ],
+    [
+      "inputs.land_min_m",
+      "settle.land_min_m"
+    ],
+    [
+      "inputs.map_format",
+      "settle.map_format"
+    ],
+    [
+      "inputs.towns",
+      "settle.towns"
+    ],
+    [
+      "inputs.industries",
+      "settle.industries"
+    ],
+    [
+      "settle.preview",
+      "settle_preview_png.image"
+    ],
+    [
+      "settle.heights",
+      "final.heights"
+    ],
+    [
+      "inputs.landcover",
+      "final.landcover"
+    ],
+    [
+      "inputs.river_plan",
+      "final.rivers"
+    ],
+    [
+      "inputs.land_min_m",
+      "final.land_min_m"
+    ],
+    [
+      "inputs.farmland",
+      "final.farmland"
+    ],
+    [
+      "final.heights",
+      "road_terrain.heights"
+    ],
+    [
+      "inputs.roads",
+      "road_terrain.roads"
+    ],
+    [
+      "final.no_cover",
+      "road_terrain.keep_free"
+    ],
+    [
+      "inputs.map_format",
+      "road_terrain.map_format"
+    ],
+    [
+      "road_terrain.heights",
+      "path_terrain.heights"
+    ],
+    [
+      "inputs.paths",
+      "path_terrain.paths"
+    ],
+    [
+      "final.no_cover",
+      "path_terrain.keep_free"
+    ],
+    [
+      "road_terrain.core",
+      "path_terrain.road_core"
+    ],
+    [
+      "inputs.map_format",
+      "path_terrain.map_format"
+    ],
+    [
+      "path_terrain.heights",
+      "groove.heights"
+    ],
+    [
+      "final.centre",
+      "groove.centre"
+    ],
+    [
+      "inputs.land_min_m",
+      "groove.land_min_m"
+    ],
+    [
+      "inputs.map_format",
+      "groove.map_format"
+    ],
+    [
+      "groove.heights",
+      "heightmap.heights"
+    ],
+    [
+      "inputs.black_m",
+      "heightmap.black_m"
+    ],
+    [
+      "heightmap.image",
+      "heightmap_png.image"
+    ],
+    [
+      "inputs.black_m",
+      "height_range.black_m"
+    ],
+    [
+      "inputs.land_min_m",
+      "height_range.land_min_m"
+    ],
+    [
+      "heightmap.white_m",
+      "height_range.white_m"
+    ],
+    [
+      "final.no_cover",
+      "outputs.no_cover"
+    ],
+    [
+      "final.forest",
+      "outputs.forest"
+    ],
+    [
+      "final.meadow",
+      "outputs.meadow"
+    ],
+    [
+      "final.cropland",
+      "outputs.cropland"
+    ],
+    [
+      "final.rock",
+      "outputs.rock"
+    ],
+    [
+      "final.glacier",
+      "outputs.glacier"
+    ],
+    [
+      "final.water",
+      "outputs.water"
+    ],
+    [
+      "final.shore",
+      "outputs.shore"
+    ],
+    [
+      "final.riverbed",
+      "outputs.riverbed"
+    ],
+    [
+      "final.crop_type",
+      "outputs.crop_type"
+    ],
+    [
+      "final.crops_preview",
+      "outputs.crops_preview"
+    ],
+    [
+      "final.planning_landcover",
+      "outputs.planning_landcover"
+    ],
+    [
+      "heightmap.image",
+      "outputs.heightmap"
+    ],
+    [
+      "heightmap.white_m",
+      "outputs.white_m"
+    ]
+  ]
+}

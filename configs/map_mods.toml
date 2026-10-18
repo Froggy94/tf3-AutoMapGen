@@ -1,0 +1,102 @@
+# The map's own mods (nodes/map_mods/): game scripts that build the planned road network (road_mod), the field tracks
+# and hiking paths as streets of own street types (path_street_mod) and name the industries after the nearest town
+# (industry_names_mod). Lengths with _game_m are game metres. Presets extend this file; the map's name in the mod
+# names is the parameter map_name of the project.
+
+# Titles and mod hub texts: folder <prefix>_<map>_<kind>, name "<prefix> <title> <map>"; {map} = the map's name
+[defaults.map_mod_texts.roads]
+title = "Roads"
+summary = "Geplantes Landstraßennetz auf Startsignal bauen"
+description = "Baut das geplante Landstraßennetz, sobald der Spieler ein Stück 'Stadtstraße sehr klein' baut (Startsignal). Orte: © OpenStreetMap-Mitwirkende, ODbL. Nur für die passende Heightmap aktivieren."
+
+[defaults.map_mod_texts.path_streets]
+title = "Path Streets"
+summary = "Feld- und Wanderwege als eigener Straßentyp"
+description = "Test: Feld- und Wanderwege als eigener Straßentyp (nur Bodentextur). Wege: © OpenStreetMap-Mitwirkende, ODbL. Nur für die passende Heightmap aktivieren."
+
+[defaults.map_mod_texts.industry_names]
+title = "Industry Names"
+summary = "Industry names after the nearest town"
+description = """Benennt alle Industrien der Karte {map} nach der nächsten Stadt (Stadt + Typ), auch später gegründete. Selbst umbenannte Industrien bleiben.
+
+Names all industries of the map {map} after the nearest town (town + type), including ones founded later. Industries renamed by the player are kept."""
+
+
+# Road mod: builds the planned road network (roads.network) after the start or on a start signal
+[defaults.road_mod]
+road_era = "new"
+auto_start = true
+start_marker = "_xsmall.street_template"
+max_edge_game_m = 40
+min_edge_game_m = 8
+remove_buildings = false
+flip_y = false
+# bridges by length (longest bridge in game m, end of the type's file name) and the tunnel type; the names TPF3 Map
+# Studio uses in game (verified there, October 2026, not by us)
+bridge_types = [[120, "/trestle.bridge"], [1e9, "/steel.bridge"]]
+tunnel_type = "/tunnel_a_car.tunnel"
+
+[defaults.road_mod.road_templates]
+new = "street/country/country_new_small.street_template"
+old = "street/country/country_old_small.street_template"
+
+
+# Path street mod: field tracks and hiking paths (paths.plan) as streets of own street types (ground texture only).
+# test_area: only a section of the map, e.g. center_uv (0.732, 0.806) many branches, (0.369, 0.765) Seefeld.
+[defaults.path_street_mod]
+clear_game_m = 20
+max_slope = 1
+flip_y = false
+description = "{name} without paving, ground texture only. Built by dhe_path_streets."
+description_de = "{name} ohne Belag, nur Bodentextur. Von dhe_path_streets gebaut."
+
+[defaults.path_street_mod.test_area]
+enabled = false
+center_uv = [0.732, 0.806]
+half_game_m = 1000
+
+[defaults.path_street_mod.network]
+gap_game_m = 20
+min_run_game_m = 50
+min_arm_game_m = 15
+snap_game_m = 6
+cross_game_m = 1.5
+min_junction_deg = 25
+mixed_junctions = false
+
+[defaults.path_street_mod.curves]
+max_edge_game_m = 25
+min_radius_game_m = 8
+relax_iterations = 200
+smooth_game_m = 5
+min_curve_edge_game_m = 3
+max_turn_deg = 35
+hard_turn_deg = 50
+chord_tol_game_m = 0.5
+
+[defaults.path_street_mod.street_types.track]
+file = "dhe_track"
+name = "Field track (Alps)"
+name_de = "Feldweg (Alpen)"
+fill = "::/terrain/materials/gravel_03/gravel_03.tmat"
+lane_overlay = true
+lanes = [{ forward = false, offset = -1, width = 0.5, modes = ["PERSON", "CARGO"] }, { forward = false, offset = -0.5, width = 1.5, modes = ["CAR", "TRUCK"] }, { forward = true, offset = 0.5, width = 1.5, modes = ["CAR", "TRUCK"] }, { forward = true, offset = 1, width = 0.5, modes = ["PERSON", "CARGO"] }]
+street_modes = ["CAR", "TRUCK"]
+speed = 8.33
+
+[defaults.path_street_mod.street_types.trail]
+file = "dhe_trail"
+name = "Hiking trail (Alps)"
+name_de = "Wanderweg (Alpen)"
+fill = "::/terrain/materials/dirt/dirt.tmat"
+lane_overlay = false
+lanes = [{ forward = false, offset = -1, width = 0.5, modes = ["PERSON", "CARGO"] }, { forward = false, offset = -0.5, width = 0.75, modes = ["CAR"] }, { forward = true, offset = 0.5, width = 0.75, modes = ["CAR"] }, { forward = true, offset = 1, width = 0.5, modes = ["PERSON", "CARGO"] }]
+street_modes = ["CAR"]
+speed = 5.56
+
+
+# Industry names mod: names every industry after the nearest planned town (type names: the industry planning)
+[defaults.industry_names_mod]
+wait_ticks = 20
+recheck_ticks = 500
+log_examples = 10

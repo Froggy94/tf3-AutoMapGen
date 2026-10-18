@@ -1,0 +1,32 @@
+# Project "Brenner" (taken over from the legacy project: configs/regions/brenner.toml, map format from
+# its last heightmap 4097 x 12289 px = Gigantomanisch 1x3, 64 x 192 tiles; changed settings from
+# configs/gui/Brenner.json).
+#   automapgen run --project brenner   (or in the GUI: automapgen gui)
+graph = "map"
+extends = ["../landscapes/brenner_north_south.toml"]
+
+[params]
+map_name = "Brenner"
+dem_download = { dem_type = "GEDTM30" }                  # downloaded once from OpenTopography (free API key)
+crop = { west = 11.28289, south = 46.45057, east = 11.71366, north = 47.33963 }
+game_width_km = 16.384
+game_height_km = 49.152
+scale = 2
+rotation_deg = 0
+min_height_m = 250
+water_sink_m = 40
+real_water_until_m = 270
+max_towns = 32
+town_min_distance_game_m = 3000
+biome_limits_m = [1000, 1600, 2100]
+
+[defaults.climate.surfaces.waterfall.area]       # waterfall brushes painted on gentler slopes
+steepness = { start = 0.05, full = 0.1 }
+blur_size = 35
+
+# Banks without slope: width = levelling depth x this factor (the draft and the final terrain)
+[nodes."terraforming/draft_terrain/draft/water"]
+banks = { smooth_factor = 5 }
+
+[nodes."final_terrain/final/water"]
+banks = { smooth_factor = 5 }

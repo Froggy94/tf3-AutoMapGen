@@ -1,0 +1,11 @@
+tf3-AutoMapGen (tf3-Auto-map-generator-framework)
+Copyright 2026 the tf3-AutoMapGen authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Transport Fever 3 and its files are the property of their owners. Original game files are not part of this
+product and are not covered by its license; the generator reads them from a local copy or a game installation.
+
+Generated maps and mods may contain data from third parties under their own licenses, e.g. OpenStreetMap
+(ODbL 1.0, (c) OpenStreetMap contributors), ESA WorldCover (CC BY 4.0) and the chosen elevation model. Whoever
+publishes a map made with this product must name these sources.

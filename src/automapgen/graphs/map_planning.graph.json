@@ -1,0 +1,222 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_planning",
+  "title": "Planning",
+  "description": "Planned on the draft terrain: field tracks, hiking paths and country roads from OpenStreetMap, towns at OpenStreetMap places with a population on buildable land, and industries on suitable resource areas near the towns. Writes the map editor's import files and previews.",
+  "inputs": {
+    "draft_planning_landcover": "classes",
+    "osm_paths": "osm_lines",
+    "places": "osm_points",
+    "frame": "map_frame",
+    "draft_water": "mask",
+    "draft_glacier": "mask",
+    "osm_roads": "osm_lines",
+    "biome_preview": "image",
+    "draft_heightmap": "image",
+    "draft_heights": "field",
+    "black_m": "number",
+    "draft_shore": "mask",
+    "draft_rock": "mask",
+    "map_format": "map_format",
+    "draft_forest": "mask",
+    "draft_meadow": "mask",
+    "draft_cropland": "mask",
+    "mountains": "mask",
+    "industry_rules": "industry_rules"
+  },
+  "outputs": {
+    "towns": "town_list",
+    "industries": "industry_list",
+    "roads": "road_lines",
+    "paths": "path_plan"
+  },
+  "params": {
+    "max_towns": {
+      "to": [
+        "towns.max_towns"
+      ],
+      "description": "at most this many towns (0 = from the map area)"
+    },
+    "town_min_distance_game_m": {
+      "to": [
+        "towns.town_min_distance_game_m"
+      ],
+      "description": "minimum distance between towns"
+    },
+    "industries": {
+      "to": [
+        "industries.industries"
+      ],
+      "description": "preset: the industry planning of the climate"
+    }
+  },
+  "nodes": {
+    "paths_and_roads": {
+      "type": "graph:map_planning_lines"
+    },
+    "towns": {
+      "type": "graph:map_planning_towns"
+    },
+    "industries": {
+      "type": "graph:map_planning_industries"
+    }
+  },
+  "links": [
+    [
+      "inputs.draft_planning_landcover",
+      "paths_and_roads.draft_planning_landcover"
+    ],
+    [
+      "inputs.osm_paths",
+      "paths_and_roads.osm_paths"
+    ],
+    [
+      "inputs.places",
+      "paths_and_roads.places"
+    ],
+    [
+      "inputs.frame",
+      "paths_and_roads.frame"
+    ],
+    [
+      "inputs.draft_water",
+      "paths_and_roads.draft_water"
+    ],
+    [
+      "inputs.draft_glacier",
+      "paths_and_roads.draft_glacier"
+    ],
+    [
+      "inputs.osm_roads",
+      "paths_and_roads.osm_roads"
+    ],
+    [
+      "inputs.biome_preview",
+      "paths_and_roads.biome_preview"
+    ],
+    [
+      "inputs.draft_heightmap",
+      "paths_and_roads.draft_heightmap"
+    ],
+    [
+      "inputs.draft_heights",
+      "towns.draft_heights"
+    ],
+    [
+      "inputs.draft_heightmap",
+      "towns.draft_heightmap"
+    ],
+    [
+      "inputs.black_m",
+      "towns.black_m"
+    ],
+    [
+      "inputs.draft_water",
+      "towns.draft_water"
+    ],
+    [
+      "inputs.draft_shore",
+      "towns.draft_shore"
+    ],
+    [
+      "inputs.draft_glacier",
+      "towns.draft_glacier"
+    ],
+    [
+      "inputs.draft_rock",
+      "towns.draft_rock"
+    ],
+    [
+      "inputs.places",
+      "towns.places"
+    ],
+    [
+      "inputs.biome_preview",
+      "towns.biome_preview"
+    ],
+    [
+      "inputs.map_format",
+      "towns.map_format"
+    ],
+    [
+      "inputs.draft_heights",
+      "industries.draft_heights"
+    ],
+    [
+      "inputs.draft_heightmap",
+      "industries.draft_heightmap"
+    ],
+    [
+      "inputs.black_m",
+      "industries.black_m"
+    ],
+    [
+      "inputs.map_format",
+      "industries.map_format"
+    ],
+    [
+      "inputs.draft_forest",
+      "industries.draft_forest"
+    ],
+    [
+      "inputs.draft_meadow",
+      "industries.draft_meadow"
+    ],
+    [
+      "inputs.draft_cropland",
+      "industries.draft_cropland"
+    ],
+    [
+      "inputs.draft_rock",
+      "industries.draft_rock"
+    ],
+    [
+      "inputs.draft_glacier",
+      "industries.draft_glacier"
+    ],
+    [
+      "inputs.draft_water",
+      "industries.draft_water"
+    ],
+    [
+      "inputs.draft_shore",
+      "industries.draft_shore"
+    ],
+    [
+      "inputs.mountains",
+      "industries.mountains"
+    ],
+    [
+      "towns.towns",
+      "industries.towns"
+    ],
+    [
+      "inputs.industry_rules",
+      "industries.industry_rules"
+    ],
+    [
+      "inputs.places",
+      "industries.places"
+    ],
+    [
+      "inputs.frame",
+      "industries.frame"
+    ],
+    [
+      "towns.towns",
+      "outputs.towns"
+    ],
+    [
+      "industries.industries",
+      "outputs.industries"
+    ],
+    [
+      "paths_and_roads.roads",
+      "outputs.roads"
+    ],
+    [
+      "paths_and_roads.paths",
+      "outputs.paths"
+    ]
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_terraforming_parcels",
+  "title": "Terraforming (parcels)",
+  "description": "Terraforming with the parcel variant of the draft terrain.",
+  "extends": "map_terraforming",
+  "nodes": {
+    "draft_terrain": {
+      "type": "graph:map_terraforming_draft_parcels"
+    }
+  }
+}

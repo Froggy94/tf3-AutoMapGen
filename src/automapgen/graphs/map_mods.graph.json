@@ -1,0 +1,161 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_mods",
+  "title": "Map Mods",
+  "description": "The map's own mods: field tracks and hiking paths as streets of own street types (path streets), and industries named after the nearest town (industry names).",
+  "inputs": {
+    "paths": "path_plan",
+    "map_format": "map_format",
+    "towns": "town_list"
+  },
+  "params": {
+    "industries": {
+      "to": [
+        "industry_names_mod.industries"
+      ],
+      "description": "preset: the industry planning of the climate"
+    },
+    "publishing": {
+      "to": [
+        "path_streets_info.publishing",
+        "path_streets_package.publishing",
+        "industry_names_info.publishing",
+        "industry_names_package.publishing"
+      ],
+      "description": "names, author and images of the published mods"
+    },
+    "map_name": {
+      "to": [
+        "path_streets_info.map_name",
+        "industry_names_info.map_name"
+      ],
+      "description": "name of the map in the names of its mods"
+    },
+    "map_mod_texts": {
+      "to": [
+        "path_streets_info.map_mod_texts",
+        "industry_names_info.map_mod_texts"
+      ],
+      "description": "titles and mod hub texts of the map's own mods"
+    },
+    "path_street_mod": {
+      "to": [
+        "path_street_mod.path_street_mod"
+      ],
+      "description": "the mod that builds field tracks and hiking paths as streets"
+    },
+    "industry_names_mod": {
+      "to": [
+        "industry_names_mod.industry_names_mod"
+      ],
+      "description": "the mod that names the industries after the nearest town"
+    }
+  },
+  "nodes": {
+    "path_streets_info": {
+      "type": "mod.map_info",
+      "params": {
+        "kind": "path_streets"
+      }
+    },
+    "path_street_mod": {
+      "type": "mod.path_streets",
+      "note": "gaps near the planned roads"
+    },
+    "path_streets_package": {
+      "type": "mod.package",
+      "params": {
+        "severity_remove": "None"
+      }
+    },
+    "path_streets_folder": {
+      "type": "file.mod",
+      "params": {
+        "copy_to": "staging_area"
+      }
+    },
+    "industry_names_info": {
+      "type": "mod.map_info",
+      "params": {
+        "kind": "industry_names"
+      }
+    },
+    "industry_names_mod": {
+      "type": "mod.industry_names"
+    },
+    "industry_names_package": {
+      "type": "mod.package",
+      "params": {
+        "severity_remove": "None"
+      }
+    },
+    "industry_names_folder": {
+      "type": "file.mod",
+      "params": {
+        "copy_to": "staging_area"
+      }
+    }
+  },
+  "links": [
+    [
+      "inputs.paths",
+      "path_street_mod.paths"
+    ],
+    [
+      "inputs.map_format",
+      "path_street_mod.map_format"
+    ],
+    [
+      "path_streets_info.mod_id",
+      "path_street_mod.mod_id"
+    ],
+    [
+      "path_street_mod.files",
+      "path_streets_package.content"
+    ],
+    [
+      "path_street_mod.translations",
+      "path_streets_package.translations"
+    ],
+    [
+      "path_streets_info.mod_id",
+      "path_streets_package.mod_id"
+    ],
+    [
+      "path_streets_info.info",
+      "path_streets_package.info"
+    ],
+    [
+      "path_streets_package.mod",
+      "path_streets_folder.mod"
+    ],
+    [
+      "path_streets_info.folder",
+      "path_streets_folder.name"
+    ],
+    [
+      "inputs.towns",
+      "industry_names_mod.towns"
+    ],
+    [
+      "industry_names_mod.files",
+      "industry_names_package.content"
+    ],
+    [
+      "industry_names_info.mod_id",
+      "industry_names_package.mod_id"
+    ],
+    [
+      "industry_names_info.info",
+      "industry_names_package.info"
+    ],
+    [
+      "industry_names_package.mod",
+      "industry_names_folder.mod"
+    ],
+    [
+      "industry_names_info.folder",
+      "industry_names_folder.name"
+    ]
+  ]
+}

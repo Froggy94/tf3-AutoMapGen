@@ -1,0 +1,186 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_planning_industries",
+  "title": "Industries",
+  "description": "Building sites and resource areas in the draft terrain as the game will see it (forest, rock, flat land ...); raw-material industries in the resource areas, processing industries near medium and large towns by the game's production rules, demand per town, names after the nearest place. Writes the towns and industries import files.",
+  "inputs": {
+    "draft_heights": "field",
+    "draft_heightmap": "image",
+    "black_m": "number",
+    "map_format": "map_format",
+    "draft_forest": "mask",
+    "draft_meadow": "mask",
+    "draft_cropland": "mask",
+    "draft_rock": "mask",
+    "draft_glacier": "mask",
+    "draft_water": "mask",
+    "draft_shore": "mask",
+    "mountains": "mask",
+    "towns": "town_list",
+    "industry_rules": "industry_rules",
+    "places": "osm_points",
+    "frame": "map_frame"
+  },
+  "outputs": {
+    "industries": "industry_list"
+  },
+  "params": {
+    "industries": {
+      "to": [
+        "industry_areas.industries",
+        "industry_plan.industries"
+      ],
+      "description": "preset: the industry planning of the climate"
+    }
+  },
+  "nodes": {
+    "industry_areas": {
+      "type": "industries.resource_areas"
+    },
+    "industry_plan": {
+      "type": "industries.plan"
+    },
+    "industries_lua": {
+      "type": "file.text",
+      "params": {
+        "name": "_industries.lua",
+        "copy_to": "towns_industries"
+      }
+    },
+    "industries_towns_lua": {
+      "type": "file.text",
+      "params": {
+        "name": "_industries_towns_only.lua",
+        "copy_to": "towns_industries"
+      },
+      "note": "towns with their demand only - the industries are placed by hand"
+    },
+    "industries_json": {
+      "type": "file.json",
+      "params": {
+        "name": "_industries.json",
+        "indent": 1
+      }
+    },
+    "resources_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_resources_preview.png"
+      }
+    },
+    "sites_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_sites_preview.png"
+      }
+    },
+    "industries_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_industries_preview.png"
+      }
+    }
+  },
+  "links": [
+    [
+      "inputs.draft_heights",
+      "industry_areas.heights"
+    ],
+    [
+      "inputs.draft_heightmap",
+      "industry_areas.heightmap"
+    ],
+    [
+      "inputs.black_m",
+      "industry_areas.black_m"
+    ],
+    [
+      "inputs.map_format",
+      "industry_areas.map_format"
+    ],
+    [
+      "inputs.draft_forest",
+      "industry_areas.forest"
+    ],
+    [
+      "inputs.draft_meadow",
+      "industry_areas.meadow"
+    ],
+    [
+      "inputs.draft_cropland",
+      "industry_areas.cropland"
+    ],
+    [
+      "inputs.draft_rock",
+      "industry_areas.rock"
+    ],
+    [
+      "inputs.draft_glacier",
+      "industry_areas.glacier"
+    ],
+    [
+      "inputs.draft_water",
+      "industry_areas.water"
+    ],
+    [
+      "inputs.draft_shore",
+      "industry_areas.shore"
+    ],
+    [
+      "inputs.mountains",
+      "industry_areas.mountains"
+    ],
+    [
+      "inputs.towns",
+      "industry_areas.towns"
+    ],
+    [
+      "industry_areas.grid",
+      "industry_plan.grid"
+    ],
+    [
+      "industry_areas.maps",
+      "industry_plan.maps"
+    ],
+    [
+      "inputs.industry_rules",
+      "industry_plan.rules"
+    ],
+    [
+      "inputs.places",
+      "industry_plan.places"
+    ],
+    [
+      "inputs.frame",
+      "industry_plan.frame"
+    ],
+    [
+      "industry_plan.lua",
+      "industries_lua.document"
+    ],
+    [
+      "industry_plan.towns_lua",
+      "industries_towns_lua.document"
+    ],
+    [
+      "industry_plan.industries",
+      "industries_json.document"
+    ],
+    [
+      "industry_areas.resources_preview",
+      "resources_preview_png.image"
+    ],
+    [
+      "industry_areas.sites_preview",
+      "sites_preview_png.image"
+    ],
+    [
+      "industry_plan.preview",
+      "industries_preview_png.image"
+    ],
+    [
+      "industry_plan.industries",
+      "outputs.industries"
+    ]
+  ]
+}

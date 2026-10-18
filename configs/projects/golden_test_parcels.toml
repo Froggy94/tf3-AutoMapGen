@@ -1,0 +1,4 @@
+# Project "GoldenTest" with fields from the landcover cut into parcels (graph map_parcels) instead of OSM fields.
+#   automapgen run --project golden_test_parcels --cache cache --downloads "../TF3 Hightmap/cache"
+graph = "map_parcels"
+extends = ["golden_test.toml"]

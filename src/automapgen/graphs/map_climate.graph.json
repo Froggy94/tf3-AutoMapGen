@@ -1,0 +1,109 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_climate",
+  "title": "Climate Mod",
+  "description": "The climate mod for the map's reference height and scale: texturing (the material tree paints the preset's surfaces - meadow, fields, rock, scree, snow, painted water, shore, riverbed, waterfalls - at real elevations), vegetation (the import tree places forest by the forest layer, species by biome and height, and boulders), the climate definition, economy, waterfall brushes and the mod package.",
+  "inputs": {
+    "land_min_m": "number",
+    "map_format": "map_format"
+  },
+  "params": {
+    "climate_reference_step_m": {
+      "to": [
+        "reference.step_m"
+      ],
+      "description": "the climate mod's reference height = the lowest land rounded to this step (0 = exact)"
+    },
+    "industries": {
+      "to": [
+        "climate_mod.industries"
+      ],
+      "description": "preset: the industry planning of the climate"
+    },
+    "climate": {
+      "to": [
+        "climate_mod.climate"
+      ],
+      "description": "preset: the climate (landscape type) of the climate mod"
+    },
+    "transition": {
+      "to": [
+        "climate_mod.transition"
+      ],
+      "description": "landscape: a second look on part of the map"
+    },
+    "publishing": {
+      "to": [
+        "climate_mod.publishing"
+      ],
+      "description": "names, author and images of the published mods"
+    },
+    "climate_texts": {
+      "to": [
+        "climate_mod.climate_texts"
+      ],
+      "description": "texts and picture of the climate mod"
+    },
+    "economy": {
+      "to": [
+        "climate_mod.economy"
+      ],
+      "description": "economy of the climate"
+    },
+    "waterfall": {
+      "to": [
+        "climate_mod.waterfall"
+      ],
+      "description": "waterfall brushes of the climate mod"
+    }
+  },
+  "nodes": {
+    "reference": {
+      "type": "climate.reference",
+      "note": "one mod for maps with a similar lowest land"
+    },
+    "climate_mod": {
+      "type": "graph:climate_mod",
+      "note": "game height 0 = the reference height"
+    },
+    "climate_mod_folder": {
+      "type": "file.mod",
+      "params": {
+        "copy_to": "staging_area"
+      }
+    },
+    "waterfall_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_waterfall_preview.png"
+      },
+      "note": "2 x 2 tiles per waterfall brush to check the seams"
+    }
+  },
+  "links": [
+    [
+      "inputs.land_min_m",
+      "reference.land_min_m"
+    ],
+    [
+      "reference.reference_m",
+      "climate_mod.reference_m"
+    ],
+    [
+      "inputs.map_format",
+      "climate_mod.map_format"
+    ],
+    [
+      "climate_mod.mod",
+      "climate_mod_folder.mod"
+    ],
+    [
+      "climate_mod.mod_id",
+      "climate_mod_folder.name"
+    ],
+    [
+      "climate_mod.waterfall_preview",
+      "waterfall_preview_png.image"
+    ]
+  ]
+}

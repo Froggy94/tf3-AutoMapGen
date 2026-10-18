@@ -1,0 +1,102 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_mods_roads",
+  "title": "Map Mods (with roads)",
+  "description": "Experimental: the map's own mods plus the road mod that builds the planned road network; the path streets leave gaps near the planned roads.",
+  "extends": "map_mods",
+  "inputs": {
+    "roads": "road_plan"
+  },
+  "params": {
+    "publishing": {
+      "to": [
+        "roads_info.publishing",
+        "roads_package.publishing",
+        "path_streets_info.publishing",
+        "path_streets_package.publishing",
+        "industry_names_info.publishing",
+        "industry_names_package.publishing"
+      ],
+      "description": "names, author and images of the published mods"
+    },
+    "map_name": {
+      "to": [
+        "roads_info.map_name",
+        "path_streets_info.map_name",
+        "industry_names_info.map_name"
+      ],
+      "description": "name of the map in the names of its mods"
+    },
+    "map_mod_texts": {
+      "to": [
+        "roads_info.map_mod_texts",
+        "path_streets_info.map_mod_texts",
+        "industry_names_info.map_mod_texts"
+      ],
+      "description": "titles and mod hub texts of the map's own mods"
+    },
+    "road_mod": {
+      "to": [
+        "road_mod.road_mod"
+      ],
+      "description": "the mod that builds the planned road network"
+    }
+  },
+  "nodes": {
+    "roads_info": {
+      "type": "mod.map_info",
+      "params": {
+        "kind": "roads"
+      }
+    },
+    "road_mod": {
+      "type": "mod.roads"
+    },
+    "roads_package": {
+      "type": "mod.package",
+      "params": {
+        "severity_remove": "None"
+      }
+    },
+    "roads_folder": {
+      "type": "file.mod",
+      "params": {
+        "copy_to": "staging_area"
+      }
+    }
+  },
+  "links": [
+    [
+      "inputs.roads",
+      "road_mod.plan"
+    ],
+    [
+      "inputs.map_format",
+      "road_mod.map_format"
+    ],
+    [
+      "road_mod.files",
+      "roads_package.content"
+    ],
+    [
+      "roads_info.mod_id",
+      "roads_package.mod_id"
+    ],
+    [
+      "roads_info.info",
+      "roads_package.info"
+    ],
+    [
+      "roads_package.mod",
+      "roads_folder.mod"
+    ],
+    [
+      "roads_info.folder",
+      "roads_folder.name"
+    ],
+    [
+      "inputs.roads",
+      "path_street_mod.roads"
+    ]
+  ]
+}

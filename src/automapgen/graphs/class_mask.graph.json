@@ -1,0 +1,27 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "class_mask",
+  "description": "A mask from landcover classes on the heightmap grid, without the pixels of `cut`.",
+  "inputs": {
+    "landcover": "classes",
+    "cut": "mask"
+  },
+  "outputs": {
+    "mask": "mask"
+  },
+  "params": {
+    "codes": {"to": ["select.codes"], "description": "landcover classes of the mask"}
+  },
+  "nodes": {
+    "select": {"type": "classes.select"},
+    "full_resolution": {"type": "mask.to_map"},
+    "without_cut": {"type": "mask.subtract"}
+  },
+  "links": [
+    ["inputs.landcover", "select.classes"],
+    ["select.mask", "full_resolution.mask"],
+    ["full_resolution.mask", "without_cut.mask"],
+    ["inputs.cut", "without_cut.minus"],
+    ["without_cut.mask", "outputs.mask"]
+  ]
+}

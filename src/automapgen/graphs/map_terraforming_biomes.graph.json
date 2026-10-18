@@ -1,0 +1,123 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_terraforming_biomes",
+  "title": "Biomes",
+  "description": "Biomes 1-4 of the game from the heights: effective height = height + extra height on steep slopes + smooth noise, cut into the bands biome_limits_m, majority-filtered; the mountain mask above mountains_from_m; a coloured biome preview (base of the other previews).",
+  "inputs": {
+    "land": "field"
+  },
+  "outputs": {
+    "biomes": "classes",
+    "mountains": "mask",
+    "biome_preview": "image"
+  },
+  "params": {
+    "biome_limits_m": {
+      "to": [
+        "biomes.limits_m"
+      ],
+      "description": "preset: borders between biome 1|2, 2|3, 3|4 (m)"
+    },
+    "mountains_from_m": {
+      "to": [
+        "biomes.mountains_from_m"
+      ],
+      "description": "preset: mountain mask from (m)"
+    }
+  },
+  "nodes": {
+    "biomes": {
+      "type": "graph:biomes"
+    },
+    "mountains_full": {
+      "type": "mask.to_map"
+    },
+    "biome_colors": {
+      "type": "image.palette",
+      "params": {
+        "colors": {
+          "0": [
+            0,
+            161,
+            230
+          ],
+          "1": [
+            54,
+            128,
+            33
+          ],
+          "2": [
+            161,
+            255,
+            140
+          ],
+          "3": [
+            128,
+            128,
+            71
+          ],
+          "4": [
+            255,
+            255,
+            255
+          ]
+        }
+      }
+    },
+    "biome_preview": {
+      "type": "image.tint",
+      "params": {
+        "color": [
+          230,
+          128,
+          153
+        ],
+        "strength": 0.5
+      }
+    },
+    "biome_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_biome_preview.png"
+      }
+    }
+  },
+  "links": [
+    [
+      "inputs.land",
+      "biomes.heights"
+    ],
+    [
+      "biomes.biomes",
+      "outputs.biomes"
+    ],
+    [
+      "biomes.mountains",
+      "mountains_full.mask"
+    ],
+    [
+      "mountains_full.mask",
+      "outputs.mountains"
+    ],
+    [
+      "biomes.biomes",
+      "biome_colors.classes"
+    ],
+    [
+      "biome_colors.image",
+      "biome_preview.image"
+    ],
+    [
+      "biomes.mountains",
+      "biome_preview.mask"
+    ],
+    [
+      "biome_preview.image",
+      "biome_preview_png.image"
+    ],
+    [
+      "biome_preview.image",
+      "outputs.biome_preview"
+    ]
+  ]
+}

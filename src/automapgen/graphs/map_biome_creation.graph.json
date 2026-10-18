@@ -1,0 +1,322 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_biome_creation",
+  "title": "Biome Creation",
+  "description": "The masks of the game's import dialog, on the heightmap grid: the biome map (grey 0/63/127/191/255) and the mountain mask; forest (WorldCover trees, minus water, banks, riverbed, fields and gaps along paths and roads), meadow, cropland (OpenStreetMap fields), rock, glacier, painted water, shore, riverbed, the crop layers (corn, wheat, soil) and the transition mask; land cover and crop previews.",
+  "inputs": {
+    "biomes": "classes",
+    "mountains": "mask",
+    "paths": "path_plan",
+    "no_cover": "mask",
+    "roads": "road_lines",
+    "forest": "mask",
+    "meadow": "mask",
+    "cropland": "mask",
+    "rock": "mask",
+    "glacier": "mask",
+    "water": "mask",
+    "shore": "mask",
+    "riverbed": "mask",
+    "crop_type": "classes",
+    "crops_preview": "image",
+    "planning_landcover": "classes",
+    "frame": "map_frame"
+  },
+  "outputs": {
+    "forest": "mask"
+  },
+  "params": {
+    "path_forest_gap_game_m": {
+      "to": [
+        "path_gaps.width_game_m"
+      ],
+      "description": "gap in the forest along paths"
+    },
+    "road_forest_gap_game_m": {
+      "to": [
+        "road_gaps.width_game_m"
+      ],
+      "description": "gap in the forest along roads"
+    },
+    "transition": {
+      "to": [
+        "transition_mask.transition"
+      ],
+      "description": "landscape: a second look on part of the map"
+    }
+  },
+  "nodes": {
+    "biomes_full": {
+      "type": "classes.to_map"
+    },
+    "biomes_grey": {
+      "type": "image.palette",
+      "params": {
+        "colors": {
+          "0": 0,
+          "1": 63,
+          "2": 127,
+          "3": 191,
+          "4": 255
+        }
+      }
+    },
+    "biomes_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_biomes.png",
+        "copy_to": "biomes"
+      }
+    },
+    "mountains_png": {
+      "type": "graph:mask_png",
+      "params": {
+        "name": "_mountains.png",
+        "copy_to": "biomes"
+      }
+    },
+    "path_gaps": {
+      "type": "lines.strip",
+      "params": {
+        "width_game_m": 0
+      }
+    },
+    "road_gaps": {
+      "type": "lines.strip",
+      "params": {
+        "width_game_m": 0
+      }
+    },
+    "forest": {
+      "type": "mask.subtract",
+      "note": "gaps along paths and roads"
+    },
+    "forest_png": {
+      "type": "graph:mask_png",
+      "params": {
+        "name": "_forest.png",
+        "copy_to": "biomes"
+      }
+    },
+    "meadow_png": {
+      "type": "graph:mask_png",
+      "params": {
+        "name": "_meadow.png",
+        "copy_to": "biomes"
+      }
+    },
+    "cropland_png": {
+      "type": "graph:mask_png",
+      "params": {
+        "name": "_cropland.png",
+        "copy_to": "biomes"
+      }
+    },
+    "rock_png": {
+      "type": "graph:mask_png",
+      "params": {
+        "name": "_rock.png",
+        "copy_to": "biomes"
+      }
+    },
+    "glacier_png": {
+      "type": "graph:mask_png",
+      "params": {
+        "name": "_glacier.png",
+        "copy_to": "biomes"
+      }
+    },
+    "water_png": {
+      "type": "graph:mask_png",
+      "params": {
+        "name": "_water.png",
+        "copy_to": "biomes"
+      }
+    },
+    "shore_png": {
+      "type": "graph:mask_png",
+      "params": {
+        "name": "_shore.png",
+        "copy_to": "biomes"
+      }
+    },
+    "riverbed_png": {
+      "type": "graph:mask_png",
+      "params": {
+        "name": "_riverbed.png",
+        "copy_to": "biomes"
+      }
+    },
+    "crop_wheat": {
+      "type": "graph:import_layer",
+      "params": {
+        "codes": [
+          1
+        ],
+        "name": "_crop_wheat.png",
+        "copy_to": "biomes"
+      }
+    },
+    "crop_corn": {
+      "type": "graph:import_layer",
+      "params": {
+        "codes": [
+          2
+        ],
+        "name": "_crop_corn.png",
+        "copy_to": "biomes"
+      }
+    },
+    "crop_soil": {
+      "type": "graph:import_layer",
+      "params": {
+        "codes": [
+          3
+        ],
+        "name": "_crop_soil.png",
+        "copy_to": "biomes"
+      }
+    },
+    "crops_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_crops_preview.png"
+      }
+    },
+    "landcover_colors": {
+      "type": "image.landcover"
+    },
+    "landcover_preview_png": {
+      "type": "file.png",
+      "params": {
+        "name": "_landcover_preview.png"
+      }
+    },
+    "transition_mask": {
+      "type": "climate.transition_mask"
+    },
+    "transition_mask_png": {
+      "type": "graph:mask_png",
+      "params": {
+        "name": "_transition_mask.png",
+        "copy_to": "biomes",
+        "skip_empty": true
+      },
+      "note": "only maps with a transition"
+    }
+  },
+  "links": [
+    [
+      "inputs.biomes",
+      "biomes_full.classes"
+    ],
+    [
+      "biomes_full.classes",
+      "biomes_grey.classes"
+    ],
+    [
+      "biomes_grey.image",
+      "biomes_png.image"
+    ],
+    [
+      "inputs.mountains",
+      "mountains_png.mask"
+    ],
+    [
+      "inputs.paths",
+      "path_gaps.lines"
+    ],
+    [
+      "inputs.no_cover",
+      "path_gaps.frame_of"
+    ],
+    [
+      "inputs.roads",
+      "road_gaps.lines"
+    ],
+    [
+      "inputs.no_cover",
+      "road_gaps.frame_of"
+    ],
+    [
+      "inputs.forest",
+      "forest.mask"
+    ],
+    [
+      "path_gaps.mask",
+      "forest.minus"
+    ],
+    [
+      "road_gaps.mask",
+      "forest.minus"
+    ],
+    [
+      "forest.mask",
+      "forest_png.mask"
+    ],
+    [
+      "inputs.meadow",
+      "meadow_png.mask"
+    ],
+    [
+      "inputs.cropland",
+      "cropland_png.mask"
+    ],
+    [
+      "inputs.rock",
+      "rock_png.mask"
+    ],
+    [
+      "inputs.glacier",
+      "glacier_png.mask"
+    ],
+    [
+      "inputs.water",
+      "water_png.mask"
+    ],
+    [
+      "inputs.shore",
+      "shore_png.mask"
+    ],
+    [
+      "inputs.riverbed",
+      "riverbed_png.mask"
+    ],
+    [
+      "inputs.crop_type",
+      "crop_wheat.landcover"
+    ],
+    [
+      "inputs.crop_type",
+      "crop_corn.landcover"
+    ],
+    [
+      "inputs.crop_type",
+      "crop_soil.landcover"
+    ],
+    [
+      "inputs.crops_preview",
+      "crops_preview_png.image"
+    ],
+    [
+      "inputs.planning_landcover",
+      "landcover_colors.classes"
+    ],
+    [
+      "landcover_colors.image",
+      "landcover_preview_png.image"
+    ],
+    [
+      "inputs.frame",
+      "transition_mask.frame"
+    ],
+    [
+      "transition_mask.mask",
+      "transition_mask_png.mask"
+    ],
+    [
+      "forest.mask",
+      "outputs.forest"
+    ]
+  ]
+}

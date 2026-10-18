@@ -1,0 +1,127 @@
+# Settings of the GUI (automapgen.app.gui.settings.GuiSettings): `automapgen gui`. The GUI's own state (last project,
+# map view) is kept in local/gui_state.json; the OpenTopography key in local/settings.toml ([secrets]).
+port = 8765                              # only reachable locally: http://127.0.0.1:<port>
+open_browser = true
+scale_steps = [1, 2, 2.5, 3, 4, 5, 10]   # scale steps (1:x) the slider snaps to
+large_map_km2 = 400                      # warn about memory from this game area on
+default_landscape = "../presets/alpine_realistic.toml"   # what a new project extends (relative to configs/projects)
+
+# Elevation models of OpenTopography to choose from (first = default)
+dem_types = [
+    { key = "GEDTM30", label = "Global Ensemble DTM 30 m (terrain without trees and houses)" },
+    { key = "EU_DTM", label = "Continental Europe DTM 30 m" },
+    { key = "COP30", label = "Copernicus 30 m (surface with forest and houses)" },
+    { key = "NASADEM", label = "NASADEM 30 m" },
+    { key = "SRTMGL1", label = "SRTM 30 m" },
+    { key = "AW3D30", label = "ALOS World 3D 30 m" },
+]
+
+# Graphs a project can use (graph list of the page; first = default for a new project). "Show graph" draws any graph.
+graphs = [
+    { id = "map", label = "map - the complete map" },
+    { id = "map_parcels", label = "map_parcels - fields cut into parcels (experimental)" },
+]
+
+# Processing steps (automapgen.app.steps.ProcessingStep): the tick boxes of a run, in display order. A step writes the
+# sinks whose node path matches `nodes` (paths through the groups, e.g. final_terrain/heightmap_png - hence the
+# leading "*/"; the first step that matches wins) and runs the nodes whose type matches
+# `types`; a run computes only what the chosen steps need. Sinks of no step run in every run.
+[[steps]]
+key = "download"
+label = "Download the source data"
+description = "Elevation model (OpenTopography), OpenStreetMap (Geofabrik), ESA WorldCover - read into the download folder and the cache; later steps need no network"
+types = ["elevation.read", "elevation.read_on_map", "osm.*", "landcover.worldcover"]
+
+[[steps]]
+key = "heightmap"
+label = "Heightmap"
+description = "The 16-bit heightmap and its height references (computes the whole terrain chain, including the town and industry planning that the settling needs)"
+nodes = ["*/heightmap_png", "*/height_range"]
+
+[[steps]]
+key = "layers"
+label = "Biome map and import layers"
+description = "Biome map, mountain mask, land cover layers, crop layers, transition mask"
+nodes = ["*/biomes_png", "*_png/write", "*/crop_*/write"]
+
+[[steps]]
+key = "towns"
+label = "Towns and industries"
+description = "The map editor's import files for towns and industries"
+nodes = ["*/towns_lua", "*/towns_json", "*/industries_lua", "*/industries_towns_lua", "*/industries_json"]
+
+[[steps]]
+key = "climate"
+label = "Climate mod"
+description = "The climate mod for the map's reference height and scale, with its waterfall preview"
+nodes = ["*/climate_mod_folder", "*/waterfall_preview_png"]
+
+[[steps]]
+key = "mods"
+label = "Map mods"
+description = "The map's own mods: path streets, industry names"
+nodes = ["*_folder"]
+
+[[steps]]
+key = "previews"
+label = "Previews and plans"
+description = "Preview pictures and plan files for checking (rivers, paths, towns, industries, land cover ...)"
+nodes = ["*preview*", "*_json", "*/rivers_profiles_png", "*/roads_plan_*", "*/worldcover_water/write"]
+
+# "Advanced settings" (automapgen.app.gui.settings.SettingsLayout): every parameter of the project's graph is listed,
+# with description, unit and limits from its node's schema - a new node parameter appears without a change here.
+# This only groups them and hides technical ones.
+[advanced]
+# exposed parameters of the graph edited on the main page (not listed)
+main_page = ["map_name", "crop", "dem_path", "dem_download", "game_width_km", "game_height_km", "scale",
+             "rotation_deg", "min_height_m", "water_sink_m", "real_water_until_m", "max_towns",
+             "town_min_distance_game_m", "climate_reference_step_m"]
+# node parameters not listed ("<node type>.<parameter>" patterns): file names and destinations, preview pictures
+hidden = ["file.*", "image.*", "*preview*", "mod.map_info.kind"]
+other = { key = "other", label = "Other" }
+
+# Sections in display order; a parameter goes to the first section with a pattern of its node type
+[[advanced.sections]]
+key = "terrain"
+label = "Elevation and heightmap"
+types = ["map.*", "elevation.*", "heightmap.*"]
+
+[[advanced.sections]]
+key = "water"
+label = "Water and rivers"
+types = ["osm.waterways", "rivers.*", "water.*", "riverbed.*", "field.min_within"]
+
+[[advanced.sections]]
+key = "landcover"
+label = "Biomes and land cover"
+types = ["field.*", "classes.*", "mask.*", "landcover.*"]
+
+[[advanced.sections]]
+key = "fields"
+label = "Fields"
+types = ["osm.areas", "farmland.*"]
+
+[[advanced.sections]]
+key = "lines"
+label = "Paths and roads"
+types = ["osm.highways", "paths.*", "roads.*", "lines.*"]
+
+[[advanced.sections]]
+key = "towns"
+label = "Towns"
+types = ["osm.points", "towns.*", "settle.*"]
+
+[[advanced.sections]]
+key = "industries"
+label = "Industries"
+types = ["industries.*"]
+
+[[advanced.sections]]
+key = "climate"
+label = "Climate mod"
+types = ["climate.*"]
+
+[[advanced.sections]]
+key = "mods"
+label = "Map mods and publishing"
+types = ["mod.*"]

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "biomes",
+  "description": "Biomes 1-4 of the game and the mountain mask from the heights: effective height = height + extra height on steep slopes + smooth noise (irregular borders), cut into height bands and majority-filtered.",
+  "inputs": {
+    "heights": "field"
+  },
+  "outputs": {
+    "biomes": "classes",
+    "mountains": "mask"
+  },
+  "params": {
+    "work_scale": {"to": ["coarse.work_scale"], "description": "computed at 1/work_scale of the heightmap resolution"},
+    "steep_from_deg": {"to": ["steep_bonus.start"], "description": "slopes steeper than this count as higher"},
+    "steep_m_per_deg": {"to": ["steep_bonus.per_unit"], "description": "extra height per degree above steep_from_deg (m)"},
+    "boundary_noise_m": {"to": ["border_noise.amplitude"], "description": "irregular borders: +- metres"},
+    "seed": {"to": ["border_noise.seed"], "description": "random seed of the border noise"},
+    "smooth_m": {"to": ["majority.radius_m", "mountains.radius_m"], "description": "majority filter radius (m)"},
+    "limits_m": {"to": ["bands.limits"], "description": "borders between biome 1|2, 2|3, 3|4 (effective height, m)"},
+    "mountains_from_m": {"to": ["above_mountain_line.limit"], "description": "mountain mask from this effective height (m)"}
+  },
+  "nodes": {
+    "coarse": {"type": "field.resample", "params": {"work_scale": 4, "method": "box"}},
+    "slope": {"type": "field.slope"},
+    "steep_bonus": {"type": "field.ramp", "params": {"start": 35, "per_unit": 20},
+                    "note": "steep slopes move up a band"},
+    "border_noise": {"type": "field.noise", "params": {"seed": 1, "wave_m": 300, "amplitude": 80}},
+    "effective": {"type": "field.sum", "note": "height + steep bonus + noise"},
+    "bands": {"type": "classes.bands", "params": {"limits": [1000, 1500, 1800], "first": 1}},
+    "majority": {"type": "classes.majority", "params": {"codes": [1, 2, 3, 4], "radius_m": 80}},
+    "above_mountain_line": {"type": "mask.above", "params": {"limit": 1800}},
+    "mountains": {"type": "mask.smooth", "params": {"radius_m": 80, "threshold": 0.5}}
+  },
+  "links": [
+    ["inputs.heights", "coarse.field"],
+    ["coarse.field", "slope.field"],
+    ["slope.degrees", "steep_bonus.field"],
+    ["coarse.field", "border_noise.like"],
+    ["coarse.field", "effective.fields"],
+    ["steep_bonus.field", "effective.fields"],
+    ["border_noise.noise", "effective.fields"],
+    ["effective.field", "bands.field"],
+    ["bands.classes", "majority.classes"],
+    ["effective.field", "above_mountain_line.field"],
+    ["above_mountain_line.mask", "mountains.mask"],
+    ["majority.classes", "outputs.biomes"],
+    ["mountains.mask", "outputs.mountains"]
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_parcels",
+  "title": "Map Generation (parcels)",
+  "description": "Experimental (farms, paused): the complete map with fields from the land cover cut into parcels (terrain_core_parcels) instead of OSM fields; writes the farm grid for farms.",
+  "extends": "map",
+  "nodes": {
+    "terraforming": {
+      "type": "graph:map_terraforming_parcels"
+    },
+    "final_terrain": {
+      "type": "graph:map_final_terrain_parcels"
+    }
+  }
+}

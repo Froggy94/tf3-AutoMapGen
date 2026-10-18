@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_terraforming_elevation",
+  "title": "Elevation",
+  "description": "Height references of the map: the lowest land becomes game height 0 (water line), the bottom of real water lies water_sink_m below it (black of the heightmap); no land below the water line; the valley floor (lowest height around each pixel) for the rivers.",
+  "inputs": {
+    "heights": "field",
+    "original_heights": "field"
+  },
+  "outputs": {
+    "land": "field",
+    "valley_floor": "field",
+    "land_min_m": "number",
+    "black_m": "number"
+  },
+  "params": {
+    "min_height_m": {
+      "to": [
+        "references.min_height_m"
+      ],
+      "description": "lowest land; empty = lowest point"
+    },
+    "water_sink_m": {
+      "to": [
+        "references.water_sink_m"
+      ],
+      "description": "core of real water this much below the lowest land"
+    }
+  },
+  "nodes": {
+    "references": {
+      "type": "elevation.references"
+    },
+    "land": {
+      "type": "field.at_least",
+      "note": "no land below the water line"
+    },
+    "floor": {
+      "type": "field.min_within",
+      "params": {
+        "radius_px": 10
+      }
+    }
+  },
+  "links": [
+    [
+      "inputs.heights",
+      "references.heights"
+    ],
+    [
+      "inputs.heights",
+      "land.field"
+    ],
+    [
+      "references.land_min_m",
+      "land.minimum"
+    ],
+    [
+      "land.field",
+      "outputs.land"
+    ],
+    [
+      "inputs.original_heights",
+      "floor.field"
+    ],
+    [
+      "floor.field",
+      "outputs.valley_floor"
+    ],
+    [
+      "references.land_min_m",
+      "outputs.land_min_m"
+    ],
+    [
+      "references.black_m",
+      "outputs.black_m"
+    ]
+  ]
+}

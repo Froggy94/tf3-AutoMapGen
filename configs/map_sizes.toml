@@ -1,0 +1,46 @@
+# Map sizes and aspect ratios of the game (automapgen.app.map_sizes.MapSizeCatalog), taken over from the legacy
+# project. Tile counts from the game (base/content/gui.zip, gui/menu/new_game_or_map_settings_page.tl, getNumTiles);
+# one tile = tile_m game metres = 64 heightmap pixels (checked: gigantic 1:2 = 80 x 160 tiles = 20.48 x 40.96 km).
+tile_m = 256
+formats = ["1x1", "1x2", "1x3", "1x4", "1x5"]     # format names in the game (tile counts partly differ slightly)
+
+# key, label (the game's names), tiles = (width, height) per format in the order of `formats`
+[[sizes]]
+key = "tiny"
+label = "Tiny"
+tiles = [[16, 16], [10, 20], [8, 24], [8, 24], [6, 30]]
+
+[[sizes]]
+key = "small"
+label = "Small"
+tiles = [[32, 32], [22, 44], [18, 54], [16, 54], [14, 70]]
+
+[[sizes]]
+key = "medium"
+label = "Medium"
+tiles = [[44, 44], [32, 64], [26, 78], [22, 88], [20, 100]]
+
+[[sizes]]
+key = "large"
+label = "Large"
+tiles = [[56, 56], [40, 80], [32, 96], [28, 112], [24, 126]]
+
+[[sizes]]
+key = "very_large"
+label = "Very large"
+tiles = [[64, 64], [44, 88], [36, 108], [32, 128], [28, 140]]
+
+[[sizes]]
+key = "huge"
+label = "Huge"
+tiles = [[80, 80], [56, 112], [46, 138], [40, 160], [34, 170]]
+
+[[sizes]]
+key = "megalomaniac"
+label = "Megalomaniac"
+tiles = [[96, 96], [66, 132], [54, 162], [48, 192], [42, 210]]
+
+[[sizes]]
+key = "gigantic"
+label = "Gigantic"
+tiles = [[112, 112], [80, 160], [64, 192], [56, 224], [50, 250]]

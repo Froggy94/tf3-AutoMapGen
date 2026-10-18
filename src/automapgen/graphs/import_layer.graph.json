@@ -1,0 +1,29 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "import_layer",
+  "description": "One import layer of the game from landcover classes: the selected classes on the heightmap grid, written as grey PNG 0/255; the mask is also an output.",
+  "inputs": {
+    "landcover": "classes"
+  },
+  "outputs": {
+    "mask": "mask"
+  },
+  "params": {
+    "codes": {"to": ["select.codes"], "description": "landcover classes of the layer"},
+    "name": {"to": ["write.name"], "description": "file name after the project prefix"},
+    "copy_to": {"to": ["write.copy_to"], "description": "named destination of the run that also receives the file"}
+  },
+  "nodes": {
+    "select": {"type": "classes.select"},
+    "full_resolution": {"type": "mask.to_map"},
+    "grey": {"type": "image.from_mask"},
+    "write": {"type": "file.png"}
+  },
+  "links": [
+    ["inputs.landcover", "select.classes"],
+    ["select.mask", "full_resolution.mask"],
+    ["full_resolution.mask", "grey.mask"],
+    ["grey.image", "write.image"],
+    ["full_resolution.mask", "outputs.mask"]
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "../../../schemas/graph.schema.json",
+  "id": "map_roads",
+  "title": "Map Generation (with road network)",
+  "description": "Experimental: the complete map plus the road network between the planned towns and industries, worked into the final terrain (map_final_terrain_roads), and the mod that builds it (map_mods with roads); the path streets leave gaps near the planned roads. Not part of the prototype release - the road planning is being redesigned (ADR 0013, 0016).",
+  "extends": "map",
+  "params": {
+    "road_min_capacity": {
+      "to": [
+        "final_terrain.road_min_capacity"
+      ],
+      "description": "towns with a smaller start size get no road connection"
+    },
+    "road_mod": {
+      "to": [
+        "map_mods.road_mod"
+      ],
+      "description": "the mod that builds the planned road network"
+    }
+  },
+  "nodes": {
+    "final_terrain": {
+      "type": "graph:map_final_terrain_roads"
+    },
+    "map_mods": {
+      "type": "graph:map_mods_roads"
+    }
+  },
+  "links": [
+    [
+      "terraforming.biome_preview",
+      "final_terrain.biome_preview"
+    ],
+    [
+      "final_terrain.road_plan",
+      "map_mods.roads"
+    ]
+  ]
+}
