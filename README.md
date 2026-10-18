@@ -22,7 +22,8 @@ graphs or nodes.
 
 **Install (once)**
 
-1. Download `tf3-AutoMapGen-<version>-windows.zip` from the releases and unpack it into a folder of your own, e.g.
+1. Download `tf3-AutoMapGen-<version>-windows.zip` from the [latest release](https://github.com/Froggy94/tf3-AutoMapGen/releases/latest) (the program; the
+   "Source code" archives there are only for developers) and unpack it into a folder of your own, e.g.
    `Documents\tf3-AutoMapGen` (not below `C:\Program Files`).
 2. Start `AutoMapGen.exe`. Windows may warn ("Windows protected your PC"): *More info* -> *Run anyway*. A console
    opens - keep it open, it is the program - and the page opens in the browser.

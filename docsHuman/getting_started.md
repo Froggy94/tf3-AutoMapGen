@@ -19,7 +19,8 @@ elevations. Why the climate mod matters is explained in [climate_mod.md](climate
 
 ## 1. Install
 
-1. Download `tf3-AutoMapGen-<version>-windows.zip` from the release page.
+1. Download `tf3-AutoMapGen-<version>-windows.zip` from the [latest release](https://github.com/Froggy94/tf3-AutoMapGen/releases/latest). That file is the
+   program; the "Source code" archives next to it are only for developers.
 2. Unpack it into a folder of your own, e.g. `Documents\tf3-AutoMapGen`. **Not** below `C:\Program Files`: the
    program keeps your projects, downloads and maps in its own folder.
 3. Start `AutoMapGen.exe` with a double click. The program is not signed, so Windows may show "Windows protected your
