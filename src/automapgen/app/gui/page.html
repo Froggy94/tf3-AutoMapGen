@@ -159,6 +159,7 @@
   <button id="start">Generate</button>
   <button id="stop" disabled>Cancel</button>
   <button id="stopDel" disabled title="Cancels and deletes every file this run created or overwrote in the map's output folder and in the game's user data folder (not: downloads, cache, configs)">Cancel and delete the files of this run</button>
+  <div class="info" id="startInfo"></div>
   <div class="info" id="runInfo"></div>
 
   <fieldset id="result" style="display:none; margin-top:10px"><legend>Import in the game</legend>
@@ -322,11 +323,28 @@ async function stats() {
   } catch (e) { $('minInfo').textContent = 'Heights not readable: ' + e; }
 }
 
+// why Generate cannot start (empty = it can)
+function startBlockers() {
+  if (!SETUP) return ['The server is not reachable.'];
+  const reasons = [];
+  if (!$('stop').disabled) reasons.push('A run is in progress.');
+  if (!/^[A-Za-z0-9_-]+$/.test($('mapName').value.trim()))
+    reasons.push('Project: enter a map name (letters, digits, _ and -).');
+  if (downloading()) {
+    if (!SETUP.api_key_set) reasons.push('Elevation data: no OpenTopography API key saved.');
+  } else if (!$('demPath').value) reasons.push('Elevation data: enter the GeoTIFF file.');
+  else if (inside(crop()) === false) reasons.push('Elevation data: the crop reaches out of the GeoTIFF file.');
+  if (!chosenSteps().length) reasons.push('Processing steps: tick at least one step.');
+  if (graphProblems.length) reasons.push('Project: the project does not fit the graph (see below the graph list).');
+  return reasons;
+}
+
 function validate() {
-  const src = downloading() ? SETUP.api_key_set : ($('demPath').value && inside(crop()) !== false);
-  const ok = SETUP && /^[A-Za-z0-9_-]+$/.test($('mapName').value.trim()) && src && chosenSteps().length > 0 &&
-             !graphProblems.length;
-  $('start').disabled = !ok || !$('stop').disabled;
+  const reasons = startBlockers();
+  $('start').disabled = reasons.length > 0;
+  $('start').title = reasons.join('\n');
+  $('startInfo').innerHTML = reasons.length && $('stop').disabled ?
+    `<span class="warn">Generate is not possible yet:</span><br>${reasons.map(esc).join('<br>')}` : '';
   $('save').disabled = !/^[A-Za-z0-9_-]+$/.test($('mapName').value.trim());
 }
 
