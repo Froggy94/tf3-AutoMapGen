@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - prototype (unreleased; test releases 0.1.0rc1 and rc2, 2026-10-18)
+## 0.1.0 - prototype (2026-10-18)
 
 First public version: a technology study that generates Transport Fever 3 maps of real regions.
 
