@@ -155,7 +155,7 @@
   </fieldset>
 
   <button id="advBtn" title="Every setting of the map, grouped by topic; only changes are stored in the project">Advanced settings ...</button>
-  <button id="save">Save project</button>
+  <button id="save" title="Writes the project file configs/projects/&lt;id&gt;.toml; comments in that file are lost">Save project</button>
   <button id="start">Generate</button>
   <button id="stop" disabled>Cancel</button>
   <button id="stopDel" disabled title="Cancels and deletes every file this run created or overwrote in the map's output folder and in the game's user data folder (not: downloads, cache, configs)">Cancel and delete the files of this run</button>
@@ -285,6 +285,8 @@ function update(fetchStats = true) {
     until < minh ? '<span class="warn">Below the reference height: no real water.</span>' :
     `Lakes and rivers with a level up to <b>${fmt(until, 0)} m</b> become real (game) water and are lowered to ` +
     `${fmt(minh, 0)} m; above that painted water.`;
+  $('realInfo').innerHTML += ' Higher = more real water, but every real river is cut down to the game\'s single ' +
+    'water level: high values give deep trenches (check the rivers preview).';
   showReference();
   if (fetchStats) statsLater();
   validate();
@@ -627,7 +629,18 @@ function showResult(r) {
     <tr><td>Water level</td><td><b>0</b></td></tr>`;
   for (const [label, file, ok] of r.files) h += `<tr><td>${esc(label)}</td><td${ok ? '' : ' class="info"'}>${esc(file)}${ok ? '' : ' (missing)'}</td></tr>`;
   if (r.towns_file) h += `<tr><td>Towns/industries</td><td>${esc(r.towns_file)}</td></tr>`;
-  $('resultBody').innerHTML = h + '</table>';
+  const option = id => $(id).selectedOptions[0]?.textContent || '';
+  const file = i => esc((r.files[i] || [])[1] || '');
+  h += `</table><b>In the game, in this order:</b><ol class="info" style="margin:4px 0 0 18px; padding:0">
+    <li>Mods: activate ${r.mods.map(m => `<b>${esc(m)}</b>`).join(', ') || 'the mods of this map'}.</li>
+    <li>Map editor: a new map with this climate, size <b>${esc(option('size'))}</b>, aspect ratio
+      <b>${esc(option('format'))}</b>.</li>
+    <li>Import the heightmap <b>${file(0)}</b>: minimum height <b>${n(r.min_game)}</b>, maximum height
+      <b>${n(r.max_game)}</b>, water level <b>0</b>.</li>
+    <li>Import the biome map <b>${file(1)}</b> and set each layer field to the file of the same name.</li>
+    ${r.towns_file ? `<li>Apply <b>${esc(r.towns_file)}</b> once, on the freshly imported map.</li>` : ''}
+  </ol>`;
+  $('resultBody').innerHTML = h;
   $('previews').innerHTML = r.previews.map(p => `<a href="${p}" target="_blank"><img src="${p}?t=${Date.now()}"></a>`).join('');
   $('result').style.display = '';
   $('result').scrollIntoView({ behavior: 'smooth' });
