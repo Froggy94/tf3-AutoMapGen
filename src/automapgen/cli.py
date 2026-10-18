@@ -28,12 +28,14 @@ import io
 import json
 import logging
 import sys
+import tomllib
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TextIO
 
 from automapgen.app.gui.server import GuiServer
 from automapgen.app.local_settings import LOCAL_SETTINGS, LocalSettings
+from automapgen.app.project_checks import ProjectChecks
 from automapgen.app.reference import GraphReference, NodeReference
 from automapgen.graph.cache import DiskCache
 from automapgen.graph.catalog import NodeCatalog
@@ -141,7 +143,8 @@ class Cli:
         return 0
 
     def _check(self, args: argparse.Namespace) -> int:
-        plan, _ = self._plan(args)
+        plan, parameters = self._plan(args)
+        self._project_checks(args, plan, parameters, LocalSettings.load(LOCAL_SETTINGS).game_folder)
         print(f"graph '{plan.graph_id}' is valid: {len(plan.nodes)} nodes, inputs {', '.join(plan.inputs) or '-'}, "
               f"outputs {', '.join(plan.outputs) or '-'}", file=self._out)
         return 0
@@ -151,6 +154,7 @@ class Cli:
         if plan.inputs:
             raise InputError(f"graph '{plan.graph_id}' has inputs ({', '.join(plan.inputs)}); run it from a program")
         local = LocalSettings.load(LOCAL_SETTINGS)
+        self._project_checks(args, plan, parameters, args.game or local.game_folder)
         user_data = None if args.no_copy else args.user_data or local.user_data_folder
         name = args.name if args.name is not None else str(parameters.params.get("map_name", ""))
         output = OutputTarget(args.output or Path("output") / (name or plan.graph_id), name,
@@ -162,9 +166,24 @@ class Cli:
         print(f"done: {len(result.executed)} nodes ran, {len(result.reused)} reused", file=self._out)
         return 0
 
+    def _project_checks(self, args: argparse.Namespace, plan: ExecutionPlan, parameters: ParameterSet,
+                        game: Path | None) -> None:
+        """Raises for game materials the game does not have (checked when the game folder is known); prints the
+        warnings of the given parameter files."""
+        problems = ProjectChecks(lambda: game).problems(plan)
+        if problems:
+            raise GraphError(problems)
+        for file in self._files(args):
+            for warning in ProjectChecks.warnings(tomllib.loads(file.read_text(encoding="utf-8")), parameters.defaults):
+                print(f"warning: {file.name}: {warning}", file=self._out)
+
+    def _files(self, args: argparse.Namespace) -> list[Path]:
+        """The parameter files of the command line: the project, then the --set files."""
+        return ([self._projects_folder / f"{args.project}.toml"] if args.project else []) + list(args.set)
+
     def _plan(self, args: argparse.Namespace) -> tuple[ExecutionPlan, ParameterSet]:
         """The compiled graph and the merged parameter sets."""
-        files = ([self._projects_folder / f"{args.project}.toml"] if args.project else []) + list(args.set)
+        files = self._files(args)
         missing = [p for p in files if not p.is_file()]
         if missing:
             raise GraphError([Problem(str(p), "parameter set not found") for p in missing])

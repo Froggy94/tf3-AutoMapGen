@@ -7,6 +7,7 @@ also lists the parameter slots: which value of a parameter set reaches which nod
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -24,6 +25,8 @@ from automapgen.graph.node import PORT_NAME, Arity, NodeSpec
 from automapgen.graph.params import NodeParams
 from automapgen.graph.paramsets import ParameterSet, Values, merged_tables
 from automapgen.graph.plan import ExecutionPlan, ParameterSlot, ParamRef, PlannedNode, PortRef
+
+_NODE_PARAMETER = re.compile(r"^(?P<scope>.*), node '(?P<node>[^']*)', parameter '(?P<param>[^']*)'$")
 
 type _Kind = NodeSpec | GraphDocument
 """What a node entry stands for: a node type or a (resolved) subgraph."""
@@ -117,7 +120,7 @@ class _Compilation:
                                for p in self._parameters.nodes if p not in self._paths]
         order = self._order()
         if self._problems:
-            raise GraphError(self._problems)
+            raise GraphError(self._grouped(self._problems))
         nodes = tuple(PlannedNode(f.path, f.spec, f.params, {p: tuple(map(self._resolve, refs))
                                                              for p, refs in f.inputs.items()})
                       for f in order if f.params is not None)
@@ -373,6 +376,30 @@ class _Compilation:
 
     def _problem(self, where: str, message: str) -> None:
         self._problems.append(Problem(where, message))
+
+    @staticmethod
+    def _grouped(problems: list[Problem]) -> list[Problem]:
+        """The same problem of one parameter in several nodes of a graph (a value given to all of them, e.g. the
+        climate preset) as one problem that lists the nodes."""
+        nodes: dict[tuple[str, str, str], list[str]] = {}
+        order: list[Problem | tuple[str, str, str]] = []
+        for problem in problems:
+            match = _NODE_PARAMETER.match(problem.where)
+            if match is None:
+                order.append(problem)
+                continue
+            key = (match["scope"], match["param"], problem.message)
+            if key not in nodes:
+                nodes[key] = []
+                order.append(key)
+            nodes[key].append(match["node"])
+
+        def merged(scope: str, param: str, message: str) -> Problem:
+            names = nodes[(scope, param, message)]
+            which = f"node '{names[0]}'" if len(names) == 1 else "nodes " + ", ".join(f"'{n}'" for n in names)
+            return Problem(f"{scope}, {which}, parameter '{param}'", message)
+
+        return [item if isinstance(item, Problem) else merged(*item) for item in order]
 
     def _guarded[T](self, action: Callable[[], T | None]) -> T | None:
         """Runs a lookup that may raise GraphError (bad file, broken `extends`) and collects its problems."""

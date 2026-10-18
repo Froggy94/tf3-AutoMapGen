@@ -118,7 +118,7 @@ def test_gui_api_setup_project_save(tmp_path: Path) -> None:
     assert '<b>Climate Mod</b><br/><small>climate</small>' in diagram["mermaid"]
     assert diagram["subgraphs"]["n_final_terrain"] == "map_final_terrain_roads"   # what map_roads changes
     assert api.get("/api/graph", {"id": "nope"}).body == {"error": "unknown graph 'nope'"}
-    assert api.post("/api/check", {"doc": project["doc"]}).body == {"problems": []}
+    assert api.post("/api/check", {"doc": project["doc"]}).body == {"problems": [], "warnings": []}
     wrong = {**project["doc"], "graph": "map", "params": {**project["doc"]["params"], "road_min_capacity": 5}}
     assert "no parameter 'road_min_capacity'" in api.post("/api/check", {"doc": wrong}).body["problems"][0]
     assert api.get("/api/nothing", {}).status == 404

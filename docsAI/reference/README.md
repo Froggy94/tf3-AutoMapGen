@@ -84,7 +84,7 @@ preset* automatically.
 | water, shore, river bed, waterfalls | layers `water`, `shore`, `riverbed`; steep painted water | `water`, `shore`, `riverbed`, `waterfall` |
 
 **Game materials** (`kind = "game"`; the material folders of TF3, `base/content/terrain/materials/`, read 2026-10-18;
-`check` does not know them - a wrong name gives no texture in the game):
+`check` reports an unknown name when the game folder is set in `local/settings.toml`):
 `asphalt_01`..`06`, `ballast`, `clf_rck_01`, `clf_rck_02`, `cliff_canyon_01`..`04`, `cliff_mesa_01`, `coal`,
 `coal_dust_01`, `corn`, `dirt`, `dirt_country_road`, `dirt_dry`, `forest_ground`, `forest_ground_dry`, `gr_br_sub`,
 `gr_sub_cst`, `gr_tr_01`..`03`, `grass_alpine`, `grass_alpine_tr`, `grass_brown`, `grass_cutted_01`,
@@ -107,6 +107,7 @@ graph and replaces or removes nodes, plus a map graph that `extends` `map` and u
 AutoMapGen.exe check --project <map>      (in the program folder; source checkout: automapgen check --project <map>)
 ```
 
-lists every problem (unknown names, wrong types, values out of limits, broken links) without running anything; the
-GUI shows the same problems under *Graph*. Then generate the map; with the cache only the affected steps run. Keep a
+lists every problem (unknown names, wrong types, values out of limits, broken links, game materials the game does
+not have) without running anything, and warns when the project changes the look without an own climate name; the GUI
+shows the same under *Graph*. Then generate the map; with the cache only the affected steps run. Keep a
 copy of a file before changing it; files written by the GUI lose their comments.

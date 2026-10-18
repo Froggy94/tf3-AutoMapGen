@@ -9,7 +9,7 @@ values stay in the file) or left out; parts in tables keyed by name (layers, sur
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
@@ -622,8 +622,28 @@ class Landscape:
         if missing:
             raise ValueError(f"transition surfaces {missing} must exist in both presets")
 
+    def game_materials(self) -> set[str]:
+        """Names of the base game's terrain materials the looks use (both presets of a transition)."""
+        presets = [self.primary] if self.secondary is None else [self.primary, self.secondary]
+        return {material.name for preset in presets for material in _game_materials(preset)}
+
     @staticmethod
     def _with_mask_layer(preset: ClimatePreset, transition: Transition) -> ClimatePreset:
         layer = LayerSpec(**transition.layer.model_dump(exclude={"key"}))
         slots = SlotPlan(layers={**preset.slots.layers, transition.layer.key: layer}, original=preset.slots.original)
         return preset.model_copy(update={"slots": slots})
+
+
+def _game_materials(value: object) -> Iterator[GameMaterial]:
+    """Every game material inside a preset value (models, tables, lists)."""
+    if isinstance(value, GameMaterial):
+        yield value
+    elif isinstance(value, BaseModel):
+        for name in type(value).model_fields:
+            yield from _game_materials(getattr(value, name))
+    elif isinstance(value, Mapping):
+        for item in value.values():
+            yield from _game_materials(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            yield from _game_materials(item)

@@ -60,3 +60,7 @@ material = { kind = "game", name = "rock_dry" }
 # Rock the game paints on steep slopes and high up: dry rock
 [defaults.transition.secondary.surfaces.rock.look]
 base = { kind = "game", name = "rock_dry" }
+
+[defaults.climate.surfaces.waterfall.area]       # waterfall brushes painted on gentler slopes
+steepness = { start = 0.05, full = 0.1 }
+blur_size = 35

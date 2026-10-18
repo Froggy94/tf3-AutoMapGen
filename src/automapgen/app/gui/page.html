@@ -494,12 +494,15 @@ function checkGraph() {                     // compile the page's project with i
   checkTimer = setTimeout(async () => {
     const g = SETUP.graphs.find(x => x.id === $('graph').value);
     const about = g ? esc(g.description) : '';
+    let warnings = [];
     try {
-      graphProblems = (await api('/api/check', { doc: documentOfPage() })).problems;
+      const r = await api('/api/check', { doc: documentOfPage() });
+      graphProblems = r.problems; warnings = r.warnings || [];
     } catch (e) { graphProblems = [String(e)]; }
-    $('graphInfo').innerHTML = graphProblems.length ?
+    $('graphInfo').innerHTML = (graphProblems.length ?
       `<span class="bad">The project does not fit this graph:</span><br>${graphProblems.map(esc).join('<br>')}` :
-      `<span class="ok">✓ checked</span> ${about}`;
+      `<span class="ok">✓ checked</span> ${about}`) +
+      warnings.map(w => `<br><span class="warn">Warning: ${esc(w)}</span>`).join('');
     validate();
   }, 300);
 }

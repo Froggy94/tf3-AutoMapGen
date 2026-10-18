@@ -15,7 +15,9 @@ from automapgen.app.gui.api import GuiApi, Response
 from automapgen.app.gui.graph_view import GraphView
 from automapgen.app.gui.run import GenerationRun, MapJob
 from automapgen.app.gui.settings import GuiPaths, GuiSettings
+from automapgen.app.local_settings import LOCAL_SETTINGS, LocalSettings
 from automapgen.app.map_sizes import MapSizeCatalog
+from automapgen.app.project_checks import ProjectChecks
 from automapgen.app.projects import ProjectStore
 from automapgen.graph.catalog import NodeCatalog
 from automapgen.graph.errors import AutoMapGenError
@@ -55,7 +57,8 @@ class GuiServer:
         self.api = GuiApi(paths, self._settings, MapSizeCatalog.load(paths.configs / "map_sizes.toml"), projects,
                           GenerationRun(job, paths.root), catalog,
                           AdvancedSettings(self._settings.advanced, catalog, library, projects),
-                          GraphView(self._settings.graphs, catalog, library, projects))
+                          GraphView(self._settings.graphs, catalog, library, projects,
+                                    ProjectChecks(lambda: LocalSettings.load(paths.root / LOCAL_SETTINGS).game_folder)))
         self._port = port or self._settings.port
 
     def serve(self) -> None:

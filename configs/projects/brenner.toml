@@ -20,10 +20,6 @@ max_towns = 32
 town_min_distance_game_m = 3000
 biome_limits_m = [1000, 1600, 2100]
 
-[defaults.climate.surfaces.waterfall.area]       # waterfall brushes painted on gentler slopes
-steepness = { start = 0.05, full = 0.1 }
-blur_size = 35
-
 # Banks without slope: width = levelling depth x this factor (the draft and the final terrain)
 [nodes."terraforming/draft_terrain/draft/water"]
 banks = { smooth_factor = 5 }

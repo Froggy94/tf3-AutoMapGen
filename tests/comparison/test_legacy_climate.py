@@ -107,7 +107,8 @@ def _defaults(name: str) -> dict[str, Any]:
 def _legacy_defaults(name: str) -> dict[str, Any]:
     """The values of a preset or landscape file with the alpine ground of the legacy project (changed
     2026-10-17): gr_br_sub with alpine grass and rock patches; the southern look keeps the base. Without a transition
-    the legacy climate keeps the base climate's river layer (left out since 2026-10-18)."""
+    the legacy climate keeps the base climate's river layer (left out since 2026-10-18). The Brenner landscape's
+    waterfall area was a setting of the legacy Brenner region (moved into the landscape 2026-10-18)."""
     defaults = copy.deepcopy(_defaults(name))
     look = defaults["climate"]["surfaces"]["alpine_ground"]["look"]
     grass, scree = look["patches"]["subarctic_grass"], look["patches"]["ground_scree"]
@@ -117,6 +118,8 @@ def _legacy_defaults(name: str) -> dict[str, Any]:
     if "transition" not in defaults:
         defaults["climate"]["slots"]["original"] = {"rivers": 0, "mountains": 1}
     if "transition" in defaults:
+        preset = _defaults("presets/alpine_realistic.toml")["climate"]["surfaces"]["waterfall"]["area"]
+        defaults["climate"]["surfaces"]["waterfall"]["area"] = copy.deepcopy(preset)
         south = defaults["transition"]["secondary"]["surfaces"]["alpine_ground"]["look"]
         del south["base"]
         south["patches"] = {"alpine_grass": south["patches"]["subarctic_grass"],

@@ -7,6 +7,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from automapgen.app.gui.settings import GraphChoice
+from automapgen.app.project_checks import ProjectChecks
 from automapgen.app.projects import ProjectStore
 from automapgen.graph.catalog import NodeCatalog
 from automapgen.graph.compiler import GraphCompiler
@@ -21,11 +22,12 @@ class GraphView:
     """Graph list, diagram and check for the page; knows the graph library, not the nodes' meaning."""
 
     def __init__(self, choices: Sequence[GraphChoice], catalog: NodeCatalog, library: GraphLibrary,
-                 projects: ProjectStore) -> None:
+                 projects: ProjectStore, checks: ProjectChecks | None = None) -> None:
         self._choices = choices
         self._library = library
         self._projects = projects
         self._compiler = GraphCompiler(catalog, library)
+        self._checks = checks or ProjectChecks(lambda: None)
 
     def choices(self) -> list[dict[str, str]]:
         """The graphs offered for projects (configs/gui.toml [[graphs]]) with their descriptions."""
@@ -44,15 +46,23 @@ class GraphView:
                 "subgraphs": subgraphs, "nodes": len(document.nodes), "links": len(document.links)}
 
     def check(self, project: Mapping[str, Any]) -> list[str]:
-        """Problems of a project document with its graph (empty: it compiles)."""
+        """Problems of a project document with its graph (empty: it compiles and its game materials exist)."""
         try:
             parameters = self._projects.parameters(dict(project))
-            self._compiler.compile(self._document(parameters.graph or "map"), parameters)
+            plan = self._compiler.compile(self._document(parameters.graph or "map"), parameters)
         except GraphError as error:
             return [str(p) for p in error.problems]
         except ValueError as error:
             return [str(error)]
-        return []
+        return [str(p) for p in self._checks.problems(plan)]
+
+    def warnings(self, project: Mapping[str, Any]) -> list[str]:
+        """What a run would do that the map maker may not want (does not stop the run)."""
+        try:
+            merged = self._projects.parameters(dict(project)).defaults
+        except (GraphError, ValueError):
+            return []           # reported by check
+        return self._checks.warnings(project, merged)
 
     def _document(self, graph_id: str) -> GraphDocument:
         document = self._library.get(graph_id)

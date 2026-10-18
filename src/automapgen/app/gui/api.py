@@ -167,7 +167,8 @@ class GuiApi:
 
     def _check(self, body: Mapping[str, Any]) -> Response:
         """Problems of the page's project document with its graph, before a run."""
-        return Response(200, {"problems": self._graphs.check(body["doc"])})
+        doc = body["doc"]
+        return Response(200, {"problems": self._graphs.check(doc), "warnings": self._graphs.warnings(doc)})
 
     def _start(self, body: Mapping[str, Any]) -> Response:
         if self._run.running:
