@@ -1,7 +1,9 @@
 # tf3-AutoMapGen
 
 *tf3-Auto-map-generator-framework* generates Transport Fever 3 maps of real regions from open geodata: an elevation
-model, ESA WorldCover land cover and OpenStreetMap.
+model, ESA WorldCover land cover and OpenStreetMap. You choose a region on a map, the program produces the heightmap,
+the biome map with its import layers, towns and industries - and a **climate mod** that paints forest, meadows, rock
+and snow where they really are: tree line, rock line and snow line in metres above sea level.
 
 > **Status: prototype v0.1.** A working technology study: map makers can generate maps with the Windows program and
 > the built-in *Alpine Realistic* look; developers can use it as a reference or as a base for their own tools. There
@@ -11,6 +13,75 @@ model, ESA WorldCover land cover and OpenStreetMap.
 
 <!-- Pictures from the game: e.g. Brenner valley overview, forest edges and fields close up, the north-south transition,
      a waterfall. Files in assets/pictures/, referenced here. -->
+
+## Quick guide: your own map
+
+You need Windows 10/11 (64 bit), Transport Fever 3, an internet connection and a free API key from
+[OpenTopography](https://portal.opentopography.org) ("My Account" -> "Request API key"). No Python, no knowledge of
+graphs or nodes.
+
+**Install (once)**
+
+1. Download `tf3-AutoMapGen-<version>-windows.zip` from the releases and unpack it into a folder of your own, e.g.
+   `Documents\tf3-AutoMapGen` (not below `C:\Program Files`).
+2. Start `AutoMapGen.exe`. Windows may warn ("Windows protected your PC"): *More info* -> *Run anyway*. A console
+   opens - keep it open, it is the program - and the page opens in the browser.
+3. On the page, under **Game folders**, enter the game installation and, recommended, the game's user data folder
+   (then the results land directly in the game); click *Save*. Under **Elevation data**, paste the API key and click
+   *Save*.
+
+**Make a map**
+
+1. **Project** -> *New*, enter a map name. Keep the climate preset **Alpine Realistic**, leave the reference height
+   empty (= the lowest point of the region) and keep the graph **map**.
+2. **Map**: choose the map size and the aspect ratio of the game; the scale stretches the region (1:2 = twice the
+   area, mountains half as high).
+3. **Location**: search a place and drag the rectangle over your region.
+4. Click **Generate**. If it is grey, the page tells you why. The first run downloads the data and takes a while;
+   later runs reuse what is unchanged.
+
+**Into the game:** activate the climate mod and the two map mods, open the map editor with this climate and map size,
+import the heightmap with the values the page shows, then the biome map with its layer files, then the towns and
+industries file. Every field and step in detail: **[docsHuman/getting_started.md](docsHuman/getting_started.md)**.
+To try it first, load the ready project **Brenner** and click *Generate*.
+
+## Change the map with an AI assistant
+
+The program is meant to be adapted **without programming**: everything it does is described by text files - the look
+of the landscape (`configs/presets/*.toml`), a gradual change of look across the map (`configs/landscapes/*.toml`),
+your map (`configs/projects/<map>.toml`) and the processing steps (`*.graph.json`). An AI assistant (e.g. Claude,
+ChatGPT) changes them for you: give it the **AI reference [docsAI/reference/README.md](docsAI/reference/README.md)**
+and the file to change, and say what you want:
+
+- "Here is my preset and the AI reference. Move the tree line to 1,900 m and make the alpine meadows drier."
+- "Make a landscape for my project that changes from the Alpine look in the north to the southern look in the south,
+  like `brenner_north_south.toml`."
+- "My map has too many small towns. Which settings change that?"
+
+The reference lists every node, parameter and graph, generated from the code, so the assistant knows what exists.
+Keep a copy of a file before you let an assistant change it and check the result with a run; the page reports
+settings that do not fit before it starts. All settings are also in the GUI under *Advanced settings ...*.
+
+## Documentation
+
+For people:
+
+| File | Content |
+|---|---|
+| [docsHuman/getting_started.md](docsHuman/getting_started.md) | for map makers: install, first map, into the game, changing things with an AI assistant |
+| [docsHuman/climate_mod.md](docsHuman/climate_mod.md) | the game's terrain generator, the import layers, what the climate mod does |
+| [docsHuman/example.md](docsHuman/example.md) | the generation of a real map (Brenner), step by step |
+| [docsHuman/architecture.md](docsHuman/architecture.md) | principles, what a graph is, how the classes work together |
+| [docsHuman/node_guide.md](docsHuman/node_guide.md) | for developers: writing nodes, graph and parameter formats |
+| [docsHuman/graphs/](docsHuman/graphs/) | the built-in graphs as diagrams |
+
+For AI assistants:
+
+- [docsAI/reference/](docsAI/reference/README.md) - for assistants that help map makers change presets, projects and
+  graphs (node types and graphs generated from the code).
+- [docsAI/](docsAI/) - for assistants and maintainers working on the code (terse, one fact in one place): code map,
+  glossary, architecture decisions ([adr/](docsAI/adr/)) and verified knowledge about the game
+  ([notes/tf3_facts.md](docsAI/notes/tf3_facts.md)).
 
 ## Goal
 
@@ -39,9 +110,9 @@ tf3-AutoMapGen produces three parts that fit together:
    types from WorldCover and OpenStreetMap, plus the biome map. They tell the terrain generator *where* each kind of
    ground is.
 3. **A climate mod** - the core of the project. It extends the game's own terrain generator so that it reads these
-   layers and paints ground, forest and rocks at real elevations: tree line, rock line and snow line in metres above
-   sea level. The look is defined as data in a **climate preset**; a map can also change its look gradually, e.g. from
-   the green northern to the dry southern Alps on the Brenner map.
+   layers and paints ground, forest and rocks at real elevations. The look is defined as data in a **climate
+   preset**; a map can also change its look gradually, e.g. from the green northern to the dry southern Alps on the
+   Brenner map.
 
 Tools that download and convert heightmaps for Transport Fever already exist. The climate mod and its layers turn such
 a heightmap into a realistic landscape. How the game's terrain generator works and what the climate mod changes:
@@ -79,16 +150,24 @@ If the game's user data folder is set, the run copies these files into the game'
   repository), Windows (the build; the source runs with Python 3.13 elsewhere too, untested), and plenty of RAM for
   large maps (an 839 km² map needed 32-45 GB in the game's import).
 
-## Quick start (map makers)
+## How it works
 
-Download `tf3-AutoMapGen-<version>-windows.zip` from the releases, unpack it into a folder of your own and start
-`AutoMapGen.exe`; no Python needed. Step by step, from the first start to the map in the game:
-**[docsHuman/getting_started.md](docsHuman/getting_started.md)**.
+A map is computed by a **graph**: small, pure **nodes** (read the elevation, compare a field with a limit, shape the
+water, place towns, build the climate's node trees, write the heightmap ...) are wired together in a JSON **graph
+document**. The settings live in layered **parameter sets** (TOML: preset, landscape, project), so one graph serves
+many maps. Behaviour changes by rewiring or by changing parameters; code is only needed for a new kind of node.
+
+```
+data (typed values) --> nodes (pure functions) --> data ...
+          wiring = graph document (JSON)     values = parameter sets (TOML)     engine = checks, order, cache
+```
+
+Principles, graphs and how the classes work together: **[docsHuman/architecture.md](docsHuman/architecture.md)**.
 
 ## Quick start (developers)
 
 ```
-git clone <this repository>
+git clone https://github.com/Froggy94/tf3-AutoMapGen.git
 cd tf3-AutoMapGen
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -e ".[dev]"
@@ -104,10 +183,7 @@ user_data_folder = "C:/Program Files (x86)/Steam/userdata/<number>/3493540/local
 opentopography_api_key = "..."   # free key from opentopography.org, used to download the elevation model
 ```
 
-**GUI** (local, in the browser): `.venv/Scripts/automapgen.exe gui`. Choose the area on the map, the map size, the
-scale, the heights and the look, tick the processing steps (download the source data, heightmap, biome map and layers,
-towns and industries, climate mod, map mods, previews; copy into the game), then start the run. Afterwards the GUI shows the values for the game's import
-dialog.
+**GUI** (local, in the browser): `.venv/Scripts/automapgen.exe gui` - the same page as the Windows program.
 
 **Command line:**
 
@@ -121,40 +197,6 @@ automapgen nodes                                     list all node types with po
 
 The first run downloads the OpenStreetMap data from Geofabrik; WorldCover tiles are read over the network. A
 step-by-step walk through a real map: **[docsHuman/example.md](docsHuman/example.md)**.
-
-## How it works
-
-A map is computed by a **graph**: small, pure **nodes** (read the elevation, compare a field with a limit, shape the
-water, place towns, build the climate's node trees, write the heightmap ...) are wired together in a JSON **graph
-document**. The settings live in layered **parameter sets** (TOML: preset, landscape, project), so one graph serves
-many maps. Behaviour changes by rewiring or by changing parameters; code is only needed for a new kind of node.
-
-```
-data (typed values) --> nodes (pure functions) --> data ...
-          wiring = graph document (JSON)     values = parameter sets (TOML)     engine = checks, order, cache
-```
-
-Principles, graphs and how the classes work together: **[docsHuman/architecture.md](docsHuman/architecture.md)**.
-
-## Documentation
-
-For people:
-
-| File | Content |
-|---|---|
-| [docsHuman/getting_started.md](docsHuman/getting_started.md) | for map makers: install, first map, into the game, changing things with an AI assistant |
-| [docsHuman/climate_mod.md](docsHuman/climate_mod.md) | the game's terrain generator, the import layers, what the climate mod does |
-| [docsHuman/example.md](docsHuman/example.md) | the generation of a real map, step by step |
-| [docsHuman/architecture.md](docsHuman/architecture.md) | principles, what a graph is, how the classes work together |
-| [docsHuman/node_guide.md](docsHuman/node_guide.md) | for developers: writing nodes, graph and parameter formats |
-| [docsHuman/graphs/](docsHuman/graphs/) | the built-in graphs as diagrams |
-
-For AI assistants that help map makers change presets, projects and graphs:
-[docsAI/reference/](docsAI/reference/README.md) (node types and graphs generated from the code).
-
-Working documents (written for the AI assistant and maintainers - terse, one fact in one place):
-[docsAI/](docsAI/) - current state, development log, requirements, code map, glossary, architecture decisions
-([adr/](docsAI/adr/)) and verified knowledge about the game ([notes/tf3_facts.md](docsAI/notes/tf3_facts.md)).
 
 ## Development
 

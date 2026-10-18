@@ -115,7 +115,7 @@ settings that do not fit the graph before it starts.
 | What you see | What to do |
 |---|---|
 | "The program folder ... cannot be written" | Unpack the ZIP into a folder of your own (step 1). |
-| *Generate* stays grey | A map name, an API key (or a GeoTIFF file) and at least one processing step are needed; problems of the project are listed under *Graph*. |
+| *Generate* stays grey | The page lists the reasons below the button (map name, API key or GeoTIFF file, processing steps, settings that do not fit the graph). |
 | "this run has no game folder" | Set the game installation under *Game folders*. |
 | The download of the elevation model fails | Check the API key; without a university account it allows 50 requests a day. |
 | The game crashes while importing | The map is too large for the memory; choose a smaller size. |
