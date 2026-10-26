@@ -25,7 +25,7 @@ from scipy.ndimage import gaussian_filter1d, map_coordinates, uniform_filter
 from automapgen.graph import NodeContext, NodeParams, data_type, node, param
 from automapgen.nodes.documents import JsonDocument, JsonDocumentCodec
 from automapgen.nodes.images import Image
-from automapgen.nodes.maps import GAME_METERS_PER_PIXEL, MapFormat, MapFrame, MapProjection, Rotation, SourceBounds
+from automapgen.nodes.maps import GAME_METERS_PER_PIXEL, MapFormat, MapFrame, MapProjection
 from automapgen.nodes.osm import OsmLines, OsmPoints
 from automapgen.nodes.rasters import Field, Mask
 
@@ -59,17 +59,6 @@ class RoadLines(JsonDocument):
 
 
 # --- shared planning helpers ---------------------------------------------------------------------------------------
-
-
-def extent_m(bounds: SourceBounds, rotation: Rotation) -> tuple[float, float]:
-    """Real extent map width x map height in metres (formula of the line planners)."""
-    if bounds.geographic:
-        mid_lat = math.radians((bounds.top + bounds.bottom) / 2)
-        width_m = (bounds.right - bounds.left) * 111320 * math.cos(mid_lat)
-        height_m = (bounds.top - bounds.bottom) * 110570
-    else:
-        width_m, height_m = bounds.right - bounds.left, bounds.top - bounds.bottom
-    return rotation.game_extent(width_m, height_m)
 
 
 def node_positions(lines: OsmLines, projection: MapProjection) -> dict[int, Point]:
@@ -225,7 +214,7 @@ def plan_paths(ways: OsmLines, places: OsmPoints, frame: MapFrame, blocked: tupl
     others only paved) from OSM; cut at the map edge, at `blocked` (water, glacier) and - except main ways - in
     `restricted` (forest, settlement) and town areas."""
     projection = MapProjection(frame)
-    extent = extent_m(frame.bounds, frame.rotation)
+    extent = (frame.extent_km[0] * 1000, frame.extent_km[1] * 1000)
     towns = TownAreas.from_places(places, params.town_radius_m, projection, extent) if params.town_radius_m \
         else TownAreas([], extent)
     planner = _PathPlanner(params, LineCutter(extent, params.densify_m), towns, _blocked(blocked),
@@ -333,7 +322,7 @@ def roads_from_osm(ways: OsmLines, places: OsmPoints, frame: MapFrame, water: Ma
     """Country roads for the terrain: OSM roads of the classes, joined where OSM splits them, cut at the map edge,
     bridges/tunnels, town areas, closed settlement (`settlement` = WorldCover settlement) and water."""
     projection = MapProjection(frame)
-    extent = extent_m(frame.bounds, frame.rotation)
+    extent = (frame.extent_km[0] * 1000, frame.extent_km[1] * 1000)
     towns = TownAreas.from_places(places, params.town_radius_m, projection, extent)
     size = max(1, round(2 * params.settlement_radius_m / (extent[0] / settlement.values.shape[1])))
     dense = uniform_filter(settlement.values.astype(np.float32), size) >= params.settlement_share

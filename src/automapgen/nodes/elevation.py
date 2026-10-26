@@ -13,13 +13,15 @@ from numpy.typing import NDArray
 from PIL import Image as PilImage
 from pydantic import BaseModel, ConfigDict
 from rasterio.enums import Resampling
-from rasterio.warp import transform_bounds
-from rasterio.windows import from_bounds
-from scipy.ndimage import distance_transform_edt
+from rasterio.transform import Affine
+from rasterio.transform import from_bounds as affine_from_bounds
+from rasterio.warp import reproject, transform, transform_bounds
+from rasterio.windows import Window, from_bounds
+from scipy.ndimage import binary_fill_holes, distance_transform_edt
 
 from automapgen.graph import NodeContext, NodeParams, data_type, node, param
 from automapgen.nodes.images import Image
-from automapgen.nodes.maps import MapFormat, MapFrame, Rotation, SourceBounds
+from automapgen.nodes.maps import GeoCenter, MapFormat, MapFrame, MapProjection, Rotation, SourceBounds
 from automapgen.nodes.opentopography import DemDownload, OpenTopography
 from automapgen.nodes.rasters import Field, resize_floats
 
@@ -30,15 +32,19 @@ _SCALE_TOLERANCE = 0.05           # horizontal scale may differ from the map for
 
 @data_type("elevation_source", "Heights of the elevation model in geo orientation (NaN = no data) and its crop.")
 class ElevationSource:
-    """Heights in metres, rows north -> south (NaN = no data), the crop and the coordinate system of the file."""
+    """Heights in metres (NaN = no data), source georeferencing, and an optional metric target frame."""
 
-    __slots__ = ("bounds", "crs_wkt", "heights")
+    __slots__ = ("bounds", "crs_wkt", "frame", "heights", "transform")
 
-    def __init__(self, heights: NDArray[np.float32], bounds: SourceBounds, crs_wkt: str) -> None:
+    def __init__(self, heights: NDArray[np.float32], bounds: SourceBounds, crs_wkt: str,
+                 transform: Affine | None = None, frame: MapFrame | None = None) -> None:
         heights.setflags(write=False)
         self.heights = heights
         self.bounds = bounds
         self.crs_wkt = crs_wkt
+        self.transform = transform if transform is not None else affine_from_bounds(
+            bounds.left, bounds.bottom, bounds.right, bounds.top, heights.shape[1], heights.shape[0])
+        self.frame = frame
 
 
 class GeoBounds(BaseModel):
@@ -60,38 +66,66 @@ class ReadParams(NodeParams):
     path: str = ""
     """GeoTIFF of the elevation model (empty: downloaded, see `download`)."""
     crop: GeoBounds | None = None
-    """Part of the file to read (None = all)."""
+    """Legacy crop (None = all); at non-cardinal bearings, only its centre is used (size = format x scale)."""
     download: DemDownload | None = None
     """Without a path: download the crop from OpenTopography (once, into the download folder)."""
+    rotation_deg: float = param(0.0, ge=0, lt=360, unit="degrees")
+    """Direction at map top, clockwise from north. Non-cardinal angles use a metric footprint."""
+    center: GeoCenter | None = None
+    """Metric footprint centre. Size = game dimensions x scale. Without this, non-cardinal angles use crop centre."""
 
 
-def elevation_file(params: ReadParams, context: NodeContext) -> Path:
+def selection_frame(params: ReadParams, map_format: MapFormat | None) -> MapFrame | None:
+    """Explicit centres and non-cardinal angles select a metric frame; old cardinal crops are unchanged."""
+    if params.center is None and params.rotation_deg % 90 == 0:
+        return None
+    if map_format is None:
+        raise ValueError("a metric/rotated selection requires map_format on elevation.read")
+    center = params.center
+    if center is None:
+        if params.crop is None:
+            raise ValueError("arbitrary rotation requires center = {lon = ..., lat = ...} or a crop")
+        b = params.crop
+        center = GeoCenter(lon=(b.west + b.east) / 2, lat=(b.south + b.north) / 2)
+    return MapFrame.centered(map_format, center, params.rotation_deg)
+
+
+def elevation_file(params: ReadParams, context: NodeContext, frame: MapFrame | None = None) -> Path:
     """The GeoTIFF to read: the given path, else the downloaded crop."""
     if params.path:
         return Path(params.path)
-    if params.download is None or params.crop is None:
-        raise ValueError("no elevation model: give a path, or a crop and a download")
-    c = params.crop
-    return OpenTopography(params.download, context.download_folder() / "elevation", context).file(
-        c.west, c.south, c.east, c.north)
+    if params.download is None or (params.crop is None and frame is None):
+        raise ValueError("no elevation model: give a path, or a crop/center and a download")
+    if frame is not None:
+        bbox = MapProjection(frame).wgs84_box()
+        # Include source pixels around boundary samples even when the configured margin is zero.
+        settings = params.download.model_copy(update={"margin_km": max(0.2, params.download.margin_km)})
+    else:
+        assert params.crop is not None
+        c = params.crop
+        bbox = (c.west, c.south, c.east, c.north)
+        settings = params.download
+    return OpenTopography(settings, context.download_folder() / "elevation", context).file(*bbox)
 
 
 @node("elevation.read", output="source")
-def read(params: ReadParams, context: NodeContext) -> ElevationSource:
-    """Reads the elevation model (a GeoTIFF), optionally only a crop given in WGS84 degrees."""
-    with rasterio.open(elevation_file(params, context)) as src:
-        window = _window(src, params.crop)
+def read(params: ReadParams, context: NodeContext, map_format: MapFormat | None = None) -> ElevationSource:
+    """Reads a GeoTIFF crop, or the source envelope covering a metric rotated footprint (requires map_format)."""
+    frame = selection_frame(params, map_format)
+    with rasterio.open(elevation_file(params, context, frame)) as src:
+        window = _metric_window(src, frame) if frame is not None else _window(src, params.crop)
         data = src.read(1, window=window, masked=True)
         bounds = _bounds(src, window)
+        source_transform = src.window_transform(window) if window is not None else src.transform
         crs_wkt = src.crs.to_wkt()
     heights = data.astype(np.float32).filled(np.nan)
     heights[np.abs(heights) > _IMPLAUSIBLE_M] = np.nan
     context.log(f"raw data: {heights.shape[1]} x {heights.shape[0]} px")
-    return ElevationSource(heights, bounds, crs_wkt)
+    return ElevationSource(heights, bounds, crs_wkt, source_transform, frame)
 
 
 class ToMapParams(NodeParams):
-    rotation_deg: Literal[0, 90, 180, 270] = 0
+    rotation_deg: float = param(0.0, ge=0, lt=360, unit="degrees")
     """Direction of the map's top edge, clockwise from north."""
 
 
@@ -102,8 +136,17 @@ class OnMap(NamedTuple):
 
 @node("elevation.to_map")
 def to_map(source: ElevationSource, map_format: MapFormat, params: ToMapParams, context: NodeContext) -> OnMap:
-    """Fills gaps (nearest valid height), turns the raster to the map orientation and resamples it bicubically to the
-    heightmap grid."""
+    """Fills gaps and resamples bicubically to the heightmap grid. Metric selections use the reader's shared projected
+    frame; legacy cardinal crops use quarter turns and resizing."""
+    if source.frame is not None:
+        if source.frame.bearing_deg != params.rotation_deg:
+            raise ValueError("elevation.read and elevation.to_map must use the same rotation_deg")
+        if (source.frame.width_px, source.frame.height_px) != (map_format.width_px, map_format.height_px) or not \
+                math.isclose(source.frame.horizontal_scale, map_format.game_per_real):
+            raise ValueError("elevation.read and elevation.to_map must use the same map_format")
+        return OnMap(_on_metric_map(source, source.frame, Resampling.cubic, context), source.frame)
+    if params.rotation_deg % 90:
+        raise ValueError("arbitrary rotation must also be configured on elevation.read (with map_format)")
     rotation = Rotation(params.rotation_deg)
     heights = rotation.to_game(_filled(source.heights, context))
     frame = MapFrame(map_format.width_px, map_format.height_px, source.bounds, rotation, source.crs_wkt)
@@ -136,14 +179,18 @@ def _check_scale(frame: MapFrame, map_format: MapFormat, context: NodeContext) -
 
 
 class ReadOnMapParams(ReadParams):
-    rotation_deg: Literal[0, 90, 180, 270] = 0
-    """Direction of the map's top edge, clockwise from north."""
+    pass
 
 
 @node("elevation.read_on_map", output="heights")
 def read_on_map(map_format: MapFormat, params: ReadOnMapParams, context: NodeContext) -> Field:
-    """The original elevation model on the heightmap grid, resampled bilinearly while reading (no levelling, gaps
-    filled with the nearest height) - what the river planning measures valleys on."""
+    """Original elevation on the same map grid, bilinearly resampled (no levelling, gaps filled with nearest height).
+    Metric selections use the same footprint and source envelope as elevation.read; river planning measures valleys
+    here."""
+    if selection_frame(params, map_format) is not None:
+        source = read(params, context, map_format)
+        assert source.frame is not None
+        return _on_metric_map(source, source.frame, Resampling.bilinear, context)
     rotation = Rotation(params.rotation_deg)
     rows, cols = rotation.geo_shape(map_format.height_px, map_format.width_px)
     with rasterio.open(elevation_file(params, context)) as src:
@@ -158,6 +205,52 @@ def read_on_map(map_format: MapFormat, params: ReadOnMapParams, context: NodeCon
         dem = dem[tuple(fill)]
     context.log(f"original heights {float(np.nanmin(dem)):.0f}..{float(np.nanmax(dem)):.0f} m")
     return Field(dem, MapFrame(map_format.width_px, map_format.height_px, bounds, rotation, crs_wkt))
+
+
+def _metric_window(src: Any, frame: MapFrame) -> Window:
+    """Read only the enclosing source window plus an interpolation halo, never pad absent source coverage."""
+    if src.crs is None:
+        raise ValueError("the elevation GeoTIFF needs a coordinate reference system")
+    ring = MapProjection(frame).footprint()
+    xs, ys = transform("EPSG:4326", src.crs, [p[0] for p in ring], [p[1] for p in ring])
+    pixels = [(~src.transform) * (x, y) for x, y in zip(xs, ys, strict=True)]
+    cols, rows = zip(*pixels, strict=True)
+    if min(cols) < 0 or max(cols) >= src.width or min(rows) < 0 or max(rows) >= src.height:
+        raise ValueError("elevation file does not cover the rotated map footprint; supply a larger DEM or download it")
+    # Cubic downsampling needs more than a fixed three-source-pixel halo. This conservative bound also covers
+    # rotated/elongated grids, where a destination step has components along both source axes.
+    span = max(max(cols) - min(cols), max(rows) - min(rows))
+    halo = max(3, math.ceil(4 * span / min(frame.width_px - 1, frame.height_px - 1)))
+    left, top = max(0, math.floor(min(cols)) - halo), max(0, math.floor(min(rows)) - halo)
+    right, bottom = min(src.width, math.ceil(max(cols)) + halo), min(src.height, math.ceil(max(rows)) + halo)
+    return Window(left, top, right - left, bottom - top)
+
+
+def _on_metric_map(source: ElevationSource, frame: MapFrame, resampling: Resampling,
+                   context: NodeContext) -> Field:
+    """Warp continuous heights onto the shared sample grid. Missing corners are errors, not nearest-filled terrain."""
+    heights = np.full((frame.height_px, frame.width_px), np.nan, dtype=np.float32)
+    valid = np.isfinite(source.heights)
+    if not valid.all():
+        # Enclosed no-data holes may be repaired, but no-data connected to the source edge is missing coverage.
+        # Check it separately: an interpolator can otherwise borrow valid neighbours across a no-data boundary.
+        support = np.asarray(binary_fill_holes(valid), dtype=np.uint8)
+        coverage = np.zeros(heights.shape, dtype=np.uint8)
+        reproject(source=support, destination=coverage, src_transform=source.transform, src_crs=source.crs_wkt,
+                  dst_transform=frame.raster_transform(), dst_crs=frame.crs_wkt,
+                  src_nodata=0, dst_nodata=0, resampling=Resampling.nearest)
+        if not coverage.all():
+            raise ValueError("elevation data does not cover every rotated map sample (edge no-data); "
+                             "supply a larger or more complete DEM")
+    filled = _filled(source.heights, context)
+    if not valid.all():
+        filled[support == 0] = np.nan  # don't use nearest-filled exterior terrain as interpolation support
+    reproject(source=filled, destination=heights, src_transform=source.transform,
+              src_crs=source.crs_wkt, dst_transform=frame.raster_transform(), dst_crs=frame.crs_wkt,
+              src_nodata=np.nan, dst_nodata=np.nan, resampling=resampling)
+    if not np.isfinite(heights).all():
+        raise ValueError("elevation data does not cover every rotated map sample; supply a larger DEM")
+    return Field(heights, frame)
 
 
 def _window(src: Any, crop: GeoBounds | None) -> Any:

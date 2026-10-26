@@ -26,11 +26,22 @@ class ZoneMask:
     def beyond_start(self, zone: GradientZone) -> NDArray[np.bool_]:
         """True where the transition has begun (beyond the start latitude, towards the end)."""
         f = self._frame
-        _, south, _, north = MapProjection(f).wgs84_box()
-        rows, cols = f.rotation.geo_shape(f.height_px, f.width_px)
+        projection = MapProjection(f)
+        if f.uv_transform is not None:
+            result = np.empty((f.height_px, f.width_px), dtype=np.bool_)
+            us = np.linspace(0, 1, f.width_px)
+            # Bounded batches: a large heightmap must not allocate millions of Python coordinate tuples at once.
+            for start in range(0, f.height_px, 32):
+                stop = min(start + 32, f.height_px)
+                uv = [(u, row / (f.height_px - 1)) for row in range(start, stop) for u in us]
+                lat = np.array([p[1] for p in projection.uv_to_wgs84(uv)]).reshape(stop - start, f.width_px)
+                result[start:stop] = (lat - zone.start_lat) * np.sign(zone.end_lat - zone.start_lat) > 0
+            return result
+        _, south, _, north = projection.wgs84_box()
+        rows, cols = f.cardinal_rotation.geo_shape(f.height_px, f.width_px)
         lat = north - (np.arange(rows) + 0.5) / rows * (north - south)   # row centres from north to south
         towards_end: NDArray[Any] = (lat - zone.start_lat) * np.sign(zone.end_lat - zone.start_lat) > 0
-        return np.asarray(f.rotation.to_game(np.repeat(towards_end[:, None], cols, axis=1)), dtype=np.bool_)
+        return np.asarray(f.cardinal_rotation.to_game(np.repeat(towards_end[:, None], cols, axis=1)), dtype=np.bool_)
 
 
 class TransitionMaskParams(NodeParams):

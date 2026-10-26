@@ -10,6 +10,10 @@
       ],
       "description": "GeoTIFF of the elevation model (empty: download)"
     },
+    "center": {
+      "to": ["source_data.center"],
+      "description": "metric map centre (WGS84 lon/lat); optional for legacy cardinal crops"
+    },
     "crop": {
       "to": [
         "source_data.crop"

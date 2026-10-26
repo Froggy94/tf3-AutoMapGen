@@ -25,6 +25,7 @@ from automapgen.graph.library import FolderLibrary
 from automapgen.graph.paramsets import ParameterSet
 from automapgen.graphs import GRAPHS_DIR
 from automapgen.nodes import BUILTIN_MODULES
+from automapgen.nodes.maps import GeoCenter, MapFormat, MapFrame, MapProjection
 
 CONFIGS = Path(__file__).resolve().parents[2] / "configs"
 
@@ -88,6 +89,7 @@ def test_local_settings_keep_secrets_when_the_folders_are_saved(tmp_path: Path) 
     assert LocalSettings.load(path) == LocalSettings(Path("G:/TF3"), None, {"opentopography_api_key": "abc"})
 
 
+@pytest.mark.filterwarnings("ignore:Use .*matmul.*:PendingDeprecationWarning")
 def test_gui_api_setup_project_save(tmp_path: Path) -> None:
     shutil.copytree(CONFIGS, tmp_path / "configs")
     paths = GuiPaths(tmp_path)
@@ -130,6 +132,23 @@ def test_gui_api_setup_project_save(tmp_path: Path) -> None:
     assert folders.body == {"game_folder": str(tmp_path / "game"), "user_data": ""}
     assert api.get("/api/setup", {}).body["game_folder"] == str(tmp_path / "game")
     assert "no base/content" in api.post("/api/folders", {"game_folder": str(tmp_path)}).body["error"]
+
+    selection = {"center": {"lon": 11.4, "lat": 47.3}, "rotation_deg": 45}
+    fmt = {"game_width_km": 11.264, "game_height_km": 22.528, "scale": 2}
+    response = api.post("/api/footprint", {"selection": selection, "format": fmt})
+    assert response.status == 200
+    frame = MapFrame.centered(MapFormat(**fmt), GeoCenter(lon=11.4, lat=47.3), 45)
+    projection = MapProjection(frame)
+    assert response.body["ring"] == projection.footprint()
+    assert response.body["top"] == projection.uv_to_wgs84([(0.5, 0)])[0]
+    assert api.post("/api/footprint", {"selection": {"rotation_deg": 45}, "format": fmt}).status == 400
+    rotated = {**doc, "params": {**doc["params"], **selection}}
+    rotated["params"].pop("crop")
+    assert api.post("/api/check", {"doc": rotated}).body["problems"] == []
+    assert api.post("/api/save", {"id": "rotated", "doc": rotated}).status == 200
+    restored = api.get("/api/project", {"id": "rotated"}).body["doc"]
+    assert restored["params"]["center"] == selection["center"]
+    assert restored["params"]["rotation_deg"] == 45
 
 
 def test_a_second_gui_on_the_same_port_is_refused() -> None:
