@@ -240,8 +240,10 @@ def _on_metric_map(source: ElevationSource, frame: MapFrame, resampling: Resampl
                   dst_transform=frame.raster_transform(), dst_crs=frame.crs_wkt,
                   src_nodata=0, dst_nodata=0, resampling=Resampling.nearest)
         if not coverage.all():
-            raise ValueError("elevation data does not cover every rotated map sample (edge no-data); "
-                             "supply a larger or more complete DEM")
+            raise ValueError("elevation data does not cover every rotated map sample (edge no-data). "
+                             "The DEM may omit coastal water even when the file covers the footprint. "
+                             "For GEDTM30 coastal gaps, try COP30. Missing land requires a more complete DEM; "
+                             "increasing the download margin alone may not help.")
     filled = _filled(source.heights, context)
     if not valid.all():
         filled[support == 0] = np.nan  # don't use nearest-filled exterior terrain as interpolation support

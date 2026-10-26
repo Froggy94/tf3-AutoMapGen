@@ -177,8 +177,10 @@ def test_missing_corners_rejected_but_internal_holes_filled(tmp_path: Path) -> N
         values = dst.read(1)
         values[:300, :] = -9999
         dst.write(values, 1)
-    with pytest.raises(ValueError, match="edge no-data"):
+    with pytest.raises(ValueError, match="edge no-data") as error:
         elevation.read_on_map(FORMAT, params.model_copy(update={"path": str(path)}), CONTEXT)
+    assert "try COP30" in str(error.value)
+    assert "increasing the download margin alone may not help" in str(error.value)
 
 
 @pytest.mark.parametrize("rotation", list(Rotation))
