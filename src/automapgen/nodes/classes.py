@@ -13,7 +13,7 @@ from rasterio.warp import reproject, transform_bounds
 from scipy.ndimage import gaussian_filter
 
 from automapgen.graph import NodeContext, NodeParams, node, param
-from automapgen.nodes.maps import MapFrame
+from automapgen.nodes.maps import MapFrame, MapProjection
 from automapgen.nodes.rasters import ClassMap, Field, Mask, resize_nearest
 
 _WORLDCOVER_TILE_DEG = 3
@@ -79,12 +79,20 @@ def worldcover(frame: MapFrame, params: WorldCoverParams, context: NodeContext) 
     """ESA WorldCover 10 m classes for the map (most frequent class per pixel), read tile by tile over the network.
     Data: ESA WorldCover project 2021, CC BY 4.0."""
     cols, rows = frame.work_grid(params.work_scale)
-    geo_rows, geo_cols = frame.rotation.geo_shape(rows, cols)
-    b = frame.bounds
     crs = CRS.from_wkt(frame.crs_wkt)
-    destination = from_bounds(b.left, b.bottom, b.right, b.top, geo_cols, geo_rows)
+    if frame.uv_transform is not None:
+        geo_rows, geo_cols = rows, cols
+        destination = frame.raster_transform(cols, rows)
+        # Include the half-cell footprint at the boundary, also on coarse work grids.
+        corners = [destination * (x, y) for x in (0, cols) for y in (0, rows)]
+        xs, ys = zip(*corners, strict=True)
+        lon0, lat0, lon1, lat1 = transform_bounds(crs, "EPSG:4326", min(xs), min(ys), max(xs), max(ys))
+    else:
+        geo_rows, geo_cols = frame.cardinal_rotation.geo_shape(rows, cols)
+        b = frame.bounds
+        destination = from_bounds(b.left, b.bottom, b.right, b.top, geo_cols, geo_rows)
+        lon0, lat0, lon1, lat1 = MapProjection(frame).wgs84_box()
     result = np.zeros((geo_rows, geo_cols), dtype=np.uint8)
-    lon0, lat0, lon1, lat1 = transform_bounds(crs, "EPSG:4326", b.left, b.bottom, b.right, b.top)
     step = _WORLDCOVER_TILE_DEG
     for tile_lat in range(math.floor(lat0 / step) * step, math.ceil(lat1 / step) * step, step):
         for tile_lon in range(math.floor(lon0 / step) * step, math.ceil(lon1 / step) * step, step):
@@ -99,4 +107,4 @@ def worldcover(frame: MapFrame, params: WorldCoverParams, context: NodeContext) 
             result[part > 0] = part[part > 0]
     if not (result > 0).any():
         raise ValueError("no WorldCover data found for this crop")
-    return ClassMap(frame.rotation.to_game(result), frame)
+    return ClassMap(result if frame.uv_transform is not None else frame.cardinal_rotation.to_game(result), frame)

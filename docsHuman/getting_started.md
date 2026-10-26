@@ -68,8 +68,9 @@ user data folder, already in the game.
 3. **Graph**: keep **map - the complete map**. Graphs marked *experimental* are work in progress.
 4. **Map**: choose the game's map size and the aspect ratio. **Scale** stretches the real region: at 1:2 one game
    metre stands for two real metres, so a larger region fits on the map and mountains become lower.
-5. **Location**: search a place, then drag the rectangle; a double click sets the centre. *Top of the map points to*
-   turns the map.
+5. **Location**: search a place, then drag the rectangle; a double click sets the centre. *Map-top bearing* turns
+   the map: 0° = north, 45° = northeast, 90° = east. Any angle is supported; see [rotation.md](rotation.md) for
+   source-data coverage and compatibility with existing crops.
 6. **Elevation data**:
    - *Data set*: GEDTM30 is a good default (terrain without trees and buildings).
    - **Real water up to**: lakes and rivers up to this elevation become real game water; higher ones are painted. The

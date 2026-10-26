@@ -95,9 +95,20 @@
       <input type="text" id="q" placeholder="Search a place, e.g. Innsbruck">
       <button id="search">Search</button>
     </div>
-    <label>Top of the map points to <select id="rotation">
-      <option value="0">North (0°)</option><option value="90">East (90°)</option>
-      <option value="180">South (180°)</option><option value="270">West (270°)</option></select></label>
+    <label>Map-top bearing (° clockwise from north)
+      <select id="rotationPreset">
+        <option value="0">0° — North</option>
+        <option value="90">90° — East</option>
+        <option value="180">180° — South</option>
+        <option value="270">270° — West</option>
+        <option value="custom">Custom</option>
+      </select></label>
+    <label>Rotation
+      <input type="range" id="rotationSlider" min="0" max="359" step="1" value="0"></label>
+    <label>Exact bearing (°)
+      <input type="number" id="rotation" min="0" max="359.999999" step="1" value="0"></label>
+    <div class="info">0° = north, 45° = northeast, 90° = east. Arbitrary bearings use a metric rectangle centred here,
+      sized by the game dimensions and scale. The enclosing source-data area is larger.</div>
     <div class="info">Drag the rectangle with the mouse; a double click sets the centre. The arrow shows where the
       top of the map is in game.</div>
     <div class="info" id="coords"></div>
@@ -189,6 +200,8 @@ const fmt = (v, d = 2) => (+v).toLocaleString('en-GB', { maximumFractionDigits: 
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 let SETUP = null, projectId = null, doc = null, center = L.latLng(47.27, 11.39), fixedCrop = null;
 let tifBounds = null, cropMin = null, cropMax = null, logNext = 0, polling = null, restoring = true;
+let metricSelection = false, footprint = null, footprintKey = null, footprintPending = false, footprintError = null;
+let footprintTask = null, footprintRequest = 0, shownFootprint = null, pendingFootprint = false;
 const advanced = new AdvancedSettings({ api, project: () => doc, page: () => documentOfPage(), button: $('advBtn') });
 
 // ---------- map ----------
@@ -196,7 +209,7 @@ const map = L.map('map', { doubleClickZoom: false }).setView(center, 10);
 L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
   maxZoom: 17, attribution: '© OpenStreetMap contributors, SRTM | © OpenTopoMap (CC-BY-SA)'
 }).addTo(map);
-const rect = L.rectangle([[0, 0], [0, 0]], { color: '#e33', weight: 2, fillOpacity: 0.15 }).addTo(map);
+const rect = L.polygon([[0, 0], [0, 0], [0, 0], [0, 0]], { color: '#e33', weight: 2, fillOpacity: 0.15 }).addTo(map);
 const upArrow = L.polyline([[0, 0], [0, 0]], { color: '#222', weight: 3, interactive: false }).addTo(map);
 const upLabel = L.marker([0, 0], { interactive: false, icon: L.divIcon({ className: '', iconSize: [80, 18],
   iconAnchor: [40, 9], html: '<div style="background:#222;color:#fff;font:600 11px system-ui;padding:1px 5px;' +
@@ -223,14 +236,93 @@ function gameKm() {                          // [width, height, tiles w, tiles h
   return [tw * SETUP.tile_m / 1000, th * SETUP.tile_m / 1000, tw, th];
 }
 const rotation = () => +$('rotation').value;
+// The numeric field is canonical: moving the slider is deliberately Custom, even at a cardinal angle.
+// Syncing a loaded/entered angle never rounds it to the slider's whole-degree steps.
+function syncRotationControls(custom = false) {
+  const angle = rotation();
+  $('rotationPreset').value = !custom && [0, 90, 180, 270].includes(angle) && $('rotation').value !== '' ?
+    String(angle) : 'custom';
+  if (Number.isFinite(angle)) $('rotationSlider').value = String(angle);
+}
+function rotationSliderChanged() {
+  $('rotation').value = $('rotationSlider').value;
+  syncRotationControls(true);
+  changed();
+}
+function rotationPresetChanged() {
+  if ($('rotationPreset').value === 'custom') return; // keep the current angle until the user adjusts it
+  $('rotation').value = $('rotationPreset').value;
+  syncRotationControls();
+  changed();
+}
+function rotationNumberChanged() {
+  syncRotationControls();
+  changed();
+}
 const downloading = () => $('srcDownload').checked;
+const metricMode = () => metricSelection || rotation() % 90 !== 0;
+
+// the selection's anchor while it is dragged on the map (the handlers in the operation section set it)
+let dragStart = null;
+const mapDragging = () => dragStart !== null;
+
+function requestFootprint() {
+  // while the selection is dragged, the map shows the last exact polygon moved with the centre (shownFrame) and the
+  // backend is asked once when the drag stops: no request storm, and no north-up box in between
+  if (mapDragging()) { pendingFootprint = true; footprintPending = true; return footprintTask; }
+  pendingFootprint = false;
+  const [gw, gh] = gameKm();
+  const body = { format: { game_width_km: gw, game_height_km: gh, scale: scaleValue() },
+    selection: { center: { lon: center.lng, lat: center.lat }, rotation_deg: rotation() } };
+  const key = JSON.stringify(body);
+  if (key === footprintKey) {
+    footprintPending = !footprint && !footprintError;
+    return footprintTask;
+  }
+  const requestCenter = [center.lat, center.lng];
+  const request = ++footprintRequest;
+  footprintKey = key; footprintPending = true; footprintError = null; footprint = null;
+  footprintTask = (async () => {
+    try {
+      const result = await api('/api/footprint', body);
+      if (key !== footprintKey || request !== footprintRequest) return; // newer selection won the race
+      footprint = { ...result, center: requestCenter };   // centre of the selection it belongs to
+      shownFootprint = footprint;
+    } catch (e) {
+      if (key !== footprintKey || request !== footprintRequest) return;
+      footprintError = String(e);
+    }
+    footprintPending = false;
+    update(false);
+  })();
+  return footprintTask;
+}
+
+// Display the exact polygon when settled, or the last exact footprint translated while dragging/recomputing.
+// Display only: pending/error state blocks generation and coverage claims; the translated bounds never enter crop().
+function shownFrame() {
+  if (!metricMode()) return null;
+  const f = footprintPending ? shownFootprint : footprint;
+  if (!f) return null;
+  const dLon = center.lng - f.center[1], dLat = center.lat - f.center[0];
+  if (!dLon && !dLat) return f;
+  const r = v => Math.round(v * 1e7) / 1e7;
+  return { center: [center.lat, center.lng],
+    ring: f.ring.map(([lon, lat]) => [r(lon + dLon), r(lat + dLat)]),
+    top: [r(f.top[0] + dLon), r(f.top[1] + dLat)],
+    bounds: { west: r(f.bounds.west + dLon), south: r(f.bounds.south + dLat),
+              east: r(f.bounds.east + dLon), north: r(f.bounds.north + dLat) } };
+}
+
+
 // like the legacy GUI: width = dLon * 111.32 * cos(centre), height = dLat * 110.57; at 90/270° the map width runs
 // north-south. A loaded project keeps its crop until the map or the location changes.
 function crop() {
+  if (metricMode() && footprint) return footprint.bounds;   // exact source envelope only; never a stale one
   if (fixedCrop) return fixedCrop;
   let [gw, gh] = gameKm();
   const s = scaleValue();
-  if (rotation() % 180) [gw, gh] = [gh, gw];
+  if (rotation() === 90 || rotation() === 270) [gw, gh] = [gh, gw];
   const dLon = gw * s / 2 / (111.32 * Math.cos(center.lat * Math.PI / 180)), dLat = gh * s / 2 / 110.57;
   const r = v => Math.round(v * 1e5) / 1e5;
   return { west: r(center.lng - dLon), south: r(center.lat - dLat), east: r(center.lng + dLon), north: r(center.lat + dLat) };
@@ -240,10 +332,15 @@ function inside(b) {
   const [x0, y0, x1, y1] = tifBounds;
   return b.west >= x0 && b.east <= x1 && b.south >= y0 && b.north <= y1;
 }
-function changed() { fixedCrop = null; update(); }
+function changed() { fixedCrop = null; if (rotation() % 90 !== 0) metricSelection = true; update(); }
 
 function update(fetchStats = true) {
   if (!SETUP || !doc) return;
+  if (metricMode()) requestFootprint();
+  else {
+    footprintKey = null; footprintPending = false; footprintError = null;
+    footprint = null; shownFootprint = null; pendingFootprint = false;
+  }
   const s = scaleValue(), b = crop(), [gw, gh, tw, th] = gameKm();
   if ($('snap').checked) $('scale').value = 1 / s;
   $('scaleTxt').textContent = `1:${fmt(s)} (heights and distances, ${fmt(1 / s, 3)} game metres per real metre)`;
@@ -257,14 +354,22 @@ function update(fetchStats = true) {
   $('townsInfo').textContent = `Empty = default: ${auto} towns for this map size (${fmt(SETUP.towns_per_100_km2, 1)} per 100 km²), largest first.`;
   $('areaWarn').innerHTML = area > SETUP.large_km2 ?
     '<span class="warn">Large map: the import needs a lot of memory (839 km² needed 32-45 GB).</span>' : '';
-  rect.setBounds([[b.south, b.west], [b.north, b.east]]);
-  const midLat = (b.south + b.north) / 2, midLng = (b.west + b.east) / 2;
-  const edge = { 0: [b.north, midLng], 90: [midLat, b.east], 180: [b.south, midLng], 270: [midLat, b.west] }[rotation()];
+  // while a metric selection is pending, keep the last rotated polygon (moved with the centre) instead of drawing
+  // a north-up box; the box would be wrong geometry and would claim coverage the run cannot use
+  const shown = metricMode() ? shownFrame() : null;
+  const ring = shown ? shown.ring.map(([lon, lat]) => [lat, lon]) :
+    [[b.north, b.west], [b.north, b.east], [b.south, b.east], [b.south, b.west]];
+  rect.setLatLngs(ring);
+  const midLat = metricMode() ? center.lat : (b.south + b.north) / 2;
+  const midLng = metricMode() ? center.lng : (b.west + b.east) / 2;
+  const edge = shown ? [shown.top[1], shown.top[0]] :
+    ({ 0: [b.north, midLng], 90: [midLat, b.east], 180: [b.south, midLng], 270: [midLat, b.west] }[rotation()] || [midLat, midLng]);
   upArrow.setLatLngs([[midLat, midLng], edge]);
   upLabel.setLatLng(edge);
-  const ins = inside(b);
+  const ins = metricMode() && (footprintPending || footprintError) ? null : inside(b);
   rect.setStyle({ color: ins === false ? '#c62828' : (ins ? '#1a7f37' : '#e33') });
-  $('coords').textContent = `lon ${b.west.toFixed(5)} – ${b.east.toFixed(5)}, lat ${b.south.toFixed(5)} – ${b.north.toFixed(5)}`;
+  $('coords').textContent = footprintError || (footprintPending ? (shown ? 'Computing footprint… (shown: last rotated selection)' : 'Computing footprint…') :
+    `${metricMode() ? 'Source envelope: ' : ''}lon ${b.west.toFixed(5)} – ${b.east.toFixed(5)}, lat ${b.south.toFixed(5)} – ${b.north.toFixed(5)}`);
   $('downloadBox').style.display = downloading() ? '' : 'none';
   $('fileBox').style.display = downloading() ? 'none' : '';
   if (downloading()) {
@@ -272,7 +377,8 @@ function update(fetchStats = true) {
     $('tifInfo').innerHTML = SETUP.api_key_set ? '<span class="ok">The crop is downloaded when the run needs it.</span>' :
       '<span class="bad">No API key saved.</span>';
   } else if (tifBounds) {
-    $('tifInfo').innerHTML = ins ? '<span class="ok">The crop lies inside the file.</span>' :
+    $('tifInfo').innerHTML = ins === null ? 'Coverage is unknown until the exact footprint is available.' :
+      ins ? '<span class="ok">The crop lies inside the file.</span>' :
       '<span class="bad">The crop reaches out of the file (blue dashed)!</span>';
   }
   const minh = referenceHeight(), until = realUntil();
@@ -292,7 +398,8 @@ function update(fetchStats = true) {
   validate();
 }
 // the heightmap's reference height: the field, else the lowest point of the crop (null while unknown)
-const referenceHeight = () => $('minh').value !== '' ? +$('minh').value : cropMin;
+// ---------- reference height and climate ----------
+function referenceHeight() { return $('minh').value !== '' ? +$('minh').value : cropMin; }
 const climateStep = () => $('climStep').value === '' ? SETUP.climate_reference_step_m : +$('climStep').value;
 const realUntil = () => $('realUntil').value !== '' ? +$('realUntil').value :
   referenceHeight() == null ? null : referenceHeight() + SETUP.real_water_above_m;
@@ -301,7 +408,9 @@ const realUntil = () => $('realUntil').value !== '' ? +$('realUntil').value :
 function showReference() {
   const minh = referenceHeight(), step = climateStep();
   if (minh == null) {
-    $('minInfo').textContent = downloading() && $('minh').value === '' ?
+    $('minInfo').textContent = metricMode() ?
+      `Empty: the lowest point inside the rotated map, measured during generation (not the larger source envelope).` :
+      downloading() && $('minh').value === '' ?
       `Empty: the lowest point of the download (named in the console); the climate mod rounds it to ${step} m steps.` : '';
     return;
   }
@@ -313,13 +422,16 @@ function showReference() {
       `<br><span class="warn">Land below ${fmt(minh, 0)} m is raised to the reference height.</span>` : '');
 }
 
+// ---------- crop statistics of a north-up crop ----------
 let statsTimer = null;
 function statsLater() { clearTimeout(statsTimer); statsTimer = setTimeout(stats, 500); }
 async function stats() {
   cropMin = cropMax = null;
-  if (downloading() || !$('demPath').value || inside(crop()) === false) return update(false);
+  // An axis-aligned envelope's extrema need not be inside a rotated map. Generation measures the actual grid.
+  if (metricMode() || downloading() || !$('demPath').value || inside(crop()) === false) return update(false);
   try {
     const r = await api(`/api/tif?path=${encodeURIComponent($('demPath').value)}&bounds=${encodeURIComponent(JSON.stringify(crop()))}`);
+    if (metricMode()) return; // ignore an older legacy crop-statistics request after switching modes
     cropMin = r.min; cropMax = r.max;
     update(false);
   } catch (e) { $('minInfo').textContent = 'Heights not readable: ' + e; }
@@ -330,6 +442,11 @@ function startBlockers() {
   if (!SETUP) return ['The server is not reachable.'];
   const reasons = [];
   if (!$('stop').disabled) reasons.push('A run is in progress.');
+  if ($('rotation').value === '' || !Number.isFinite(rotation()) || rotation() < 0 || rotation() >= 360)
+    reasons.push('Location: bearing must be at least 0 and less than 360 degrees.');
+  if (metricMode() && footprintPending) reasons.push('Location: computing the rotated footprint.');
+  if (metricMode() && pendingFootprint) reasons.push('Location: release the selection to get its exact footprint.');
+  if (metricMode() && footprintError) reasons.push('Location: ' + footprintError);
   if (!/^[A-Za-z0-9_-]+$/.test($('mapName').value.trim()))
     reasons.push('Project: enter a map name (letters, digits, _ and -).');
   if (downloading()) {
@@ -367,6 +484,8 @@ function documentOfPage() {
     map_name: $('mapName').value.trim(), crop: crop(), game_width_km: gw, game_height_km: gh, scale: scaleValue(),
     rotation_deg: rotation(), water_sink_m: +$('sink').value
   });
+  if (metricMode()) { p.center = { lon: center.lng, lat: center.lat }; delete p.crop; }
+  else delete p.center;
   // empty fields = the nodes' defaults (lowest point, real water 120 m above it, rounding step)
   for (const [key, id] of [['min_height_m', 'minh'], ['real_water_until_m', 'realUntil'],
                            ['climate_reference_step_m', 'climStep']]) {
@@ -395,7 +514,13 @@ async function showDocument(id, d) {
   else if (p.game_width_km) $('size').value = 'custom';
   if (p.scale) { $('snap').checked = SETUP.scale_steps.includes(p.scale); $('scale').value = 1 / p.scale; }
   $('rotation').value = String(p.rotation_deg || 0);
-  if (p.crop) {
+  syncRotationControls();
+  metricSelection = !!p.center || rotation() % 90 !== 0;
+  footprintKey = null; footprint = null; shownFootprint = null; pendingFootprint = false;
+  if (p.center) {
+    fixedCrop = null;
+    center = L.latLng(p.center.lat, p.center.lon);
+  } else if (p.crop) {
     fixedCrop = { ...p.crop };
     center = L.latLng((p.crop.south + p.crop.north) / 2, (p.crop.west + p.crop.east) / 2);
   } else fixedCrop = null;
@@ -412,6 +537,7 @@ async function showDocument(id, d) {
   $('townsDist').value = p.town_min_distance_game_m != null ? p.town_min_distance_game_m / 1000 : '';
   $('projectList').value = id || '';
   await loadTif();
+  if (metricMode()) await requestFootprint();
   advanced.refresh();
   map.fitBounds(rect.getBounds(), { padding: [40, 40] });
   restoring = false;
@@ -647,14 +773,13 @@ function showResult(r) {
 }
 
 // ---------- operation ----------
-let dragStart = null;
-rect.on('mousedown', e => { map.dragging.disable(); dragStart = { mouse: e.latlng, center }; L.DomEvent.stop(e); });
+rect.on('mousedown', e => { map.dragging.disable(); dragStart = { mouse: e.latlng, center }; update(false); L.DomEvent.stop(e); });
 map.on('mousemove', e => {
   if (!dragStart) return;
   center = L.latLng(dragStart.center.lat + e.latlng.lat - dragStart.mouse.lat,
                     dragStart.center.lng + e.latlng.lng - dragStart.mouse.lng);
   fixedCrop = null;
-  update(false);
+  update(false);   // moves the displayed polygon; requestFootprint waits for the drag to stop
 });
 const endDrag = () => { if (dragStart) { dragStart = null; map.dragging.enable(); update(); } };
 map.on('mouseup', endDrag);
@@ -669,6 +794,7 @@ async function search() {
     if (!j.length) return;
     center = L.latLng(+j[0].lat, +j[0].lon);
     changed();
+    if (metricMode()) await requestFootprint();
     map.fitBounds(rect.getBounds(), { padding: [40, 40] });
   } catch { }
 }
@@ -719,7 +845,10 @@ async function init() {
     keyInfo();
     update(false);
   };
-  ['size', 'format', 'snap', 'rotation'].forEach(id => $(id).addEventListener('change', changed));
+  ['size', 'format', 'snap'].forEach(id => $(id).addEventListener('change', changed));
+  $('rotationPreset').addEventListener('change', rotationPresetChanged);
+  $('rotationSlider').addEventListener('input', rotationSliderChanged);
+  $('rotation').addEventListener('change', rotationNumberChanged);
   $('scale').addEventListener('input', () => { fixedCrop = null; update(false); });
   $('scale').addEventListener('change', changed);
   $('minh').addEventListener('input', () => update(false));

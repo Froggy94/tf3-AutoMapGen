@@ -250,23 +250,26 @@ Parameters:
 
 Version 1
 
-Reads the elevation model (a GeoTIFF), optionally only a crop given in WGS84 degrees.
+Reads a GeoTIFF crop, or the source envelope covering a metric rotated footprint (requires map_format).
 
-Inputs: -  
+Inputs: `map_format: map_format` (optional)  
 Outputs: `source: elevation_source`
 
 Parameters:
 
 - `path` (string, default `""`): GeoTIFF of the elevation model (empty: downloaded, see `download`).
-- `crop` ([GeoBounds](#geobounds) \| none, default `null`): Part of the file to read (None = all).
+- `crop` ([GeoBounds](#geobounds) \| none, default `null`): Legacy crop (None = all); at non-cardinal bearings, only its centre is used (size = format x scale).
 - `download` ([DemDownload](#demdownload) \| none, default `null`): Without a path: download the crop from OpenTopography (once, into the download folder).
+- `rotation_deg` (number, default `0.0`, unit degrees, >= 0, < 360): Direction at map top, clockwise from north. Non-cardinal angles use a metric footprint.
+- `center` ([GeoCenter](#geocenter) \| none, default `null`): Metric footprint centre. Size = game dimensions x scale. Without this, non-cardinal angles use crop centre.
 
 ## elevation.read_on_map
 
 Version 1
 
-The original elevation model on the heightmap grid, resampled bilinearly while reading (no levelling, gaps
-filled with the nearest height) - what the river planning measures valleys on.
+Original elevation on the same map grid, bilinearly resampled (no levelling, gaps filled with nearest height).
+Metric selections use the same footprint and source envelope as elevation.read; river planning measures valleys
+here.
 
 Inputs: `map_format: map_format`  
 Outputs: `heights: field`
@@ -274,9 +277,10 @@ Outputs: `heights: field`
 Parameters:
 
 - `path` (string, default `""`): GeoTIFF of the elevation model (empty: downloaded, see `download`).
-- `crop` ([GeoBounds](#geobounds) \| none, default `null`): Part of the file to read (None = all).
+- `crop` ([GeoBounds](#geobounds) \| none, default `null`): Legacy crop (None = all); at non-cardinal bearings, only its centre is used (size = format x scale).
 - `download` ([DemDownload](#demdownload) \| none, default `null`): Without a path: download the crop from OpenTopography (once, into the download folder).
-- `rotation_deg` (0 \| 90 \| 180 \| 270, default `0`): Direction of the map's top edge, clockwise from north.
+- `rotation_deg` (number, default `0.0`, unit degrees, >= 0, < 360): Direction at map top, clockwise from north. Non-cardinal angles use a metric footprint.
+- `center` ([GeoCenter](#geocenter) \| none, default `null`): Metric footprint centre. Size = game dimensions x scale. Without this, non-cardinal angles use crop centre.
 
 ## elevation.references
 
@@ -296,15 +300,15 @@ Parameters:
 
 Version 1
 
-Fills gaps (nearest valid height), turns the raster to the map orientation and resamples it bicubically to the
-heightmap grid.
+Fills gaps and resamples bicubically to the heightmap grid. Metric selections use the reader's shared projected
+frame; legacy cardinal crops use quarter turns and resizing.
 
 Inputs: `source: elevation_source`, `map_format: map_format`  
 Outputs: `heights: field`, `frame: map_frame`
 
 Parameters:
 
-- `rotation_deg` (0 \| 90 \| 180 \| 270, default `0`): Direction of the map's top edge, clockwise from north.
+- `rotation_deg` (number, default `0.0`, unit degrees, >= 0, < 360): Direction of the map's top edge, clockwise from north.
 
 ## farmland.close_gap
 
@@ -1552,6 +1556,13 @@ Rectangle in WGS84 degrees.
 - `south` (number, required): Southern edge: latitude in degrees (north positive).
 - `east` (number, required): Eastern edge: longitude in degrees.
 - `north` (number, required): Northern edge: latitude in degrees.
+
+## GeoCenter
+
+Centre of a metric map footprint in WGS84 degrees.
+
+- `lon` (number, required, >= -180, <= 180): Longitude, east positive.
+- `lat` (number, required, > -90, < 90): Latitude, north positive.
 
 ## GradientZone
 

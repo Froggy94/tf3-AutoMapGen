@@ -113,6 +113,7 @@ The complete map: heightmap, biomes and rivers (painted ones moved into the vall
 Exposed parameters:
 
 - `dem_path` -> `source_data.dem_path`: GeoTIFF of the elevation model (empty: download)
+- `center` -> `source_data.center`: metric map centre (WGS84 lon/lat); optional for legacy cardinal crops
 - `crop` -> `source_data.crop`: part of the elevation model (WGS84 degrees)
 - `dem_download` -> `source_data.dem_download`: without dem_path: the elevation model to download from OpenTopography
 - `game_width_km` -> `source_data.game_width_km`
@@ -479,12 +480,13 @@ Outputs: `heights: field`, `landcover: classes`, `original_heights: field`, `wat
 Exposed parameters:
 
 - `dem_path` -> `dem.path`, `original.path`: GeoTIFF of the elevation model (empty: download)
+- `center` -> `dem.center`, `original.center`: metric map centre (WGS84 lon/lat); size comes from game dimensions and scale
 - `crop` -> `dem.crop`, `original.crop`: part of the elevation model (WGS84 degrees)
 - `dem_download` -> `dem.download`, `original.download`: without dem_path: the elevation model to download from OpenTopography
 - `game_width_km` -> `format.game_width_km`
 - `game_height_km` -> `format.game_height_km`
 - `scale` -> `format.scale`: scale 1:scale
-- `rotation_deg` -> `on_map.rotation_deg`, `original.rotation_deg`
+- `rotation_deg` -> `on_map.rotation_deg`, `original.rotation_deg`, `dem.rotation_deg`
 
 Nodes:
 

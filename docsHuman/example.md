@@ -62,7 +62,8 @@ layers, checks it completely and runs it. With the cache, a later run computes o
 
 **What:** `map.format` turns game size and scale into the heightmap grid: 11.264 x 11.264 game km at 4 m per pixel
 gives **2817 x 2817 pixels**, covering 22.5 x 22.5 km of real land. `elevation.to_map` places this frame over the
-crop, optionally rotated. Every later step works on this grid.
+crop, optionally rotated. Every later step works on this grid. For a non-cardinal bearing, such as northeast-up,
+see [rotation.md](rotation.md): the grid uses a metric rectangle defined by centre, game size, scale and angle.
 
 **Why:** the game stretches every imported image to the map size, so all images must have the map's aspect ratio and
 grid.

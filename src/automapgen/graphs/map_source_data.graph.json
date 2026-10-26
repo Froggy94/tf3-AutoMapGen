@@ -24,6 +24,10 @@
       ],
       "description": "GeoTIFF of the elevation model (empty: download)"
     },
+    "center": {
+      "to": ["dem.center", "original.center"],
+      "description": "metric map centre (WGS84 lon/lat); size comes from game dimensions and scale"
+    },
     "crop": {
       "to": [
         "dem.crop",
@@ -57,7 +61,8 @@
     "rotation_deg": {
       "to": [
         "on_map.rotation_deg",
-        "original.rotation_deg"
+        "original.rotation_deg",
+        "dem.rotation_deg"
       ]
     }
   },
@@ -128,6 +133,10 @@
     }
   },
   "links": [
+    [
+      "format.format",
+      "dem.map_format"
+    ],
     [
       "dem.source",
       "on_map.source"

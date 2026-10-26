@@ -17,6 +17,7 @@ from rasterio.transform import from_bounds
 from automapgen.graph import NodeContext
 from automapgen.nodes import elevation
 from automapgen.nodes.elevation import GeoBounds, ReadParams
+from automapgen.nodes.maps import GeoCenter, MapFormat, MapFrame, MapProjection
 from automapgen.nodes.opentopography import DemDownload
 
 CROP = GeoBounds(west=11.0, south=47.0, east=11.1, north=47.1)
@@ -77,6 +78,25 @@ def test_crop_is_downloaded_once(tmp_path: Path, requests_seen: list[dict[str, A
     assert float(np.nanmax(first.heights)) == 700
     assert [p.name for p in (tmp_path / "elevation").iterdir()] == [
         "GEDTM30_11.00000_47.00000_11.10000_47.10000.tif"]
+
+
+@pytest.mark.filterwarnings("ignore:Use .*matmul.*:PendingDeprecationWarning")
+def test_rotated_download_covers_footprint_and_is_shared_by_readers(
+        tmp_path: Path, requests_seen: list[dict[str, Any]]) -> None:
+    fmt = MapFormat(1, 5, 2)
+    params = elevation.ReadOnMapParams(crop=CROP, rotation_deg=45, download=DemDownload(margin_km=0))
+    context = _context(tmp_path)
+    source = elevation.read(params, context, fmt)
+    original = elevation.read_on_map(fmt, params, context)
+    frame = MapFrame.centered(fmt, GeoCenter(lon=11.05, lat=47.05), 45)
+    assert source.frame == original.frame == frame
+    assert len(requests_seen) == 1
+    request = requests_seen[0]
+    for lon, lat in MapProjection(frame).footprint():
+        assert request["west"] < lon < request["east"]
+        assert request["south"] < lat < request["north"]
+    assert request["west"] < CROP.west  # the long diagonal extends beyond the old crop
+    assert np.isfinite(original.values).all()
 
 
 def test_download_needs_the_key_and_a_good_answer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

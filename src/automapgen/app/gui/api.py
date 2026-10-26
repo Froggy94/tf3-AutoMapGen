@@ -18,6 +18,8 @@ from automapgen.app.local_settings import LocalSettings
 from automapgen.app.map_sizes import PIXELS_PER_TILE, MapSizeCatalog
 from automapgen.app.projects import ProjectStore
 from automapgen.graph.catalog import NodeCatalog
+from automapgen.nodes.elevation import ReadParams, selection_frame
+from automapgen.nodes.maps import MapFormatParams, MapProjection, map_format
 from automapgen.nodes.opentopography import SECRET, DemDownload
 from automapgen.nodes.rivers import REAL_WATER_ABOVE_M
 
@@ -61,7 +63,8 @@ class GuiApi:
         self._post: Mapping[str, Callable[[Mapping[str, Any]], Response]] = {
             "/api/save": self._save, "/api/run": self._start, "/api/stop": self._stop,
             "/api/stop_delete": self._stop_delete, "/api/state": self._state, "/api/key": self._key,
-            "/api/settings": self._settings_form, "/api/check": self._check, "/api/folders": self._folders}
+            "/api/settings": self._settings_form, "/api/check": self._check, "/api/folders": self._folders,
+            "/api/footprint": self._footprint}
 
     def stop(self) -> None:
         """Server shutdown: cancel a running generation."""
@@ -157,6 +160,17 @@ class GuiApi:
         return NOT_FOUND
 
     # --- POST ------------------------------------------------------------------------------------------------------
+
+    def _footprint(self, body: Mapping[str, Any]) -> Response:
+        """The same metric footprint used by generation (no network/data download)."""
+        fmt = map_format(MapFormatParams.model_validate(body["format"]))
+        frame = selection_frame(ReadParams.model_validate(body["selection"]), fmt)
+        if frame is None:
+            raise ValueError("footprint preview requires a center or a non-cardinal crop")
+        projection = MapProjection(frame)
+        west, south, east, north = projection.wgs84_box()
+        return Response(200, {"bounds": {"west": west, "south": south, "east": east, "north": north},
+                              "ring": projection.footprint(), "top": projection.uv_to_wgs84([(0.5, 0)])[0]})
 
     def _save(self, body: Mapping[str, Any]) -> Response:
         return Response(200, {"id": self._write(body)})

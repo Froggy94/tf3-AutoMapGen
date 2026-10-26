@@ -12,7 +12,9 @@ from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
+from pydantic import BaseModel, ConfigDict, Field
 from rasterio.crs import CRS
+from rasterio.transform import Affine
 from rasterio.warp import transform, transform_bounds
 
 from automapgen.graph import NodeParams, data_type, node, param
@@ -68,6 +70,17 @@ class MapFormat:
     def from_json(cls, data: dict[str, float]) -> MapFormat:
         return cls(**data)
 
+
+
+class GeoCenter(BaseModel):
+    """Centre of a metric map footprint in WGS84 degrees."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", use_attribute_docstrings=True)
+
+    lon: float = Field(ge=-180, le=180)
+    """Longitude, east positive."""
+    lat: float = Field(gt=-90, lt=90)
+    """Latitude, north positive."""
 
 
 class Rotation(Enum):
@@ -146,13 +159,62 @@ class MapFrame:
     width_px: int
     height_px: int
     bounds: SourceBounds
-    rotation: Rotation
+    rotation: Rotation | float
     crs_wkt: str
+    # Normalized map coordinates (u right, v down) -> projected metres. Absent for legacy crops.
+    uv_transform: Affine | None = None
+
+    @classmethod
+    def centered(cls, map_format: MapFormat, center: GeoCenter, rotation_deg: float) -> MapFrame:
+        """A metric rectangle, bearing clockwise from true north at its centre.
+
+        AEQD preserves distances/bearings from the centre. The download envelope is not the map's extent.
+        Heightmap samples span the rectangle including its endpoints (4 game metres between samples).
+        """
+        if not math.isfinite(rotation_deg):
+            raise ValueError("rotation must be finite")
+        angle = rotation_deg % 360
+        theta = math.radians(angle)
+        c, s = math.cos(theta), math.sin(theta)
+        width = (map_format.width_px - 1) * GAME_METERS_PER_PIXEL * map_format.scale
+        height = (map_format.height_px - 1) * GAME_METERS_PER_PIXEL * map_format.scale
+        if width <= 0 or height <= 0:
+            raise ValueError("map must have at least two samples on each axis")
+        placement = Affine(width * c, -height * s, (-width * c + height * s) / 2,
+                           -width * s, -height * c, (width * s + height * c) / 2)
+        corners = [placement * uv for uv in ((0, 0), (1, 0), (1, 1), (0, 1))]
+        xs, ys = zip(*corners, strict=True)
+        bounds = SourceBounds(min(xs), min(ys), max(xs), max(ys), False)
+        crs = CRS.from_dict(proj="aeqd", lat_0=center.lat, lon_0=center.lon, datum="WGS84", units="m")
+        frame = cls(map_format.width_px, map_format.height_px, bounds, angle, crs.to_wkt(), placement)
+        MapProjection(frame).wgs84_box()  # reject unsupported dateline-crossing selections early
+        return frame
+
+    @property
+    def bearing_deg(self) -> float:
+        return self.rotation.value if isinstance(self.rotation, Rotation) else self.rotation
+
+    @property
+    def cardinal_rotation(self) -> Rotation:
+        """Quarter turn for the legacy crop path only."""
+        return Rotation(self.bearing_deg)
+
+    def raster_transform(self, width: int | None = None, height: int | None = None) -> Affine:
+        """GDAL pixel-edge transform; pixel centres coincide with map samples, including u/v=0 and 1."""
+        if self.uv_transform is None:
+            raise ValueError("a sample transform requires a metric map frame")
+        w, h = width or self.width_px, height or self.height_px
+        dx, dy = 1 / max(w - 1, 1), 1 / max(h - 1, 1)
+        # A one-sample work grid represents the centre, rather than the top/left edge.
+        return self.uv_transform * Affine.translation(0.5 if w == 1 else 0, 0.5 if h == 1 else 0) * \
+            Affine.scale(dx, dy) * Affine.translation(-0.5, -0.5)
 
     @property
     def extent_km(self) -> tuple[float, float]:
-        """Real extent along the map width x map height in km."""
-        return self.rotation.game_extent(*self.bounds.extent_km())
+        """Real extent along the map width x map height in km (not its enclosing bounding box)."""
+        if (t := self.uv_transform) is not None:
+            return math.hypot(t.a, t.d) / 1000, math.hypot(t.b, t.e) / 1000
+        return self.cardinal_rotation.game_extent(*self.bounds.extent_km())
 
     def meters_per_pixel(self, width: int | None = None, height: int | None = None) -> tuple[float, float]:
         """Real metres per pixel along the map width and height, of the heightmap grid or of a grid width x height."""
@@ -175,13 +237,18 @@ class MapFrame:
 
     def to_json(self) -> dict[str, Any]:
         b = self.bounds
-        return {"width_px": self.width_px, "height_px": self.height_px, "rotation": self.rotation.value,
+        data = {"width_px": self.width_px, "height_px": self.height_px, "rotation": self.bearing_deg,
                 "bounds": [b.left, b.bottom, b.right, b.top, b.geographic], "crs_wkt": self.crs_wkt}
+        if self.uv_transform is not None:
+            data["uv_transform"] = list(self.uv_transform)[:6]
+        return data
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> MapFrame:
-        return cls(data["width_px"], data["height_px"], SourceBounds(*data["bounds"]), Rotation(data["rotation"]),
-                   data["crs_wkt"])
+        placement = Affine(*data["uv_transform"]) if "uv_transform" in data else None
+        rotation = float(data["rotation"]) if placement is not None else Rotation(data["rotation"])
+        return cls(data["width_px"], data["height_px"], SourceBounds(*data["bounds"]), rotation,
+                   data["crs_wkt"], placement)
 
 
 
@@ -209,12 +276,39 @@ class MapProjection:
 
     def wgs84_box(self) -> tuple[float, float, float, float]:
         """The crop as (lon0, lat0, lon1, lat1)."""
+        if self._frame.uv_transform is not None:
+            xs, ys = zip(*self.footprint(), strict=True)
+            if max(xs) - min(xs) > 180:
+                raise ValueError("map footprints crossing the antimeridian are not supported")
+            return min(xs), min(ys), max(xs), max(ys)
         b = self._frame.bounds
         lon0, lat0, lon1, lat1 = transform_bounds(self._crs, "EPSG:4326", b.left, b.bottom, b.right, b.top)
         return lon0, lat0, lon1, lat1
 
+    def uv_to_wgs84(self, points: Sequence[Sequence[float]]) -> list[tuple[float, float]]:
+        """Map fractions -> WGS84. The inverse of ring_to_uv for metric frames."""
+        if not points:
+            return []
+        if self._frame.uv_transform is None:
+            raise ValueError("inverse projection requires a metric map frame")
+        xy = [self._frame.uv_transform * (p[0], p[1]) for p in points]
+        xs, ys = transform(self._crs, "EPSG:4326", [p[0] for p in xy], [p[1] for p in xy])
+        return list(zip(xs, ys, strict=True))
+
+    def footprint(self, segments: int = 32) -> list[tuple[float, float]]:
+        """Densified perimeter, so curved projected edges are included in geographic query bounds."""
+        t = np.linspace(0, 1, segments + 1)
+        uv = ([(v, 0.0) for v in t] + [(1.0, v) for v in t] +
+              [(1 - v, 1.0) for v in t] + [(0.0, 1 - v) for v in t])
+        return self.uv_to_wgs84(uv)
+
     def ring_to_uv(self, ring: Sequence[Sequence[float]]) -> list[tuple[float, float]]:
         """[(lon, lat), ...] -> [(u, v), ...]."""
+        if not ring:
+            return []
         xs, ys = transform("EPSG:4326", self._crs, [p[0] for p in ring], [p[1] for p in ring])
-        b, rotation = self._frame.bounds, self._frame.rotation
+        if self._frame.uv_transform is not None:
+            inverse = ~self._frame.uv_transform
+            return [inverse * (x, y) for x, y in zip(xs, ys, strict=True)]
+        b, rotation = self._frame.bounds, self._frame.cardinal_rotation
         return [rotation.geo_to_uv(*b.fractions(x, y)) for x, y in zip(xs, ys, strict=True)]
