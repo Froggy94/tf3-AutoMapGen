@@ -172,7 +172,7 @@ def test_network_connects_towns_and_industries_through_the_terrain() -> None:
     params = network.RoadNetworkParams(town_radius_game_m=60, min_bridge_game_m=10, preview_width=100)
 
     result = network.network(Field(dem, frame), empty, empty, empty, empty, empty, towns, industries,
-                             MapFormat(0.8, 0.8, 1), 500, Image(np.zeros((50, 50, 3), dtype=np.uint8)), params,
+                             MapFormat(0.8, 0.8, 1, 1), 500, Image(np.zeros((50, 50, 3), dtype=np.uint8)), params,
                              NodeContext("roads", lambda m: None, lambda f: None, lambda: False))
     plan = result.plan.data
 

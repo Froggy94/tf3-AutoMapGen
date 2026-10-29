@@ -86,7 +86,8 @@ class ClimateIdentityData(JsonDocument):
 
 @dataclass(frozen=True)
 class ClimateNaming:
-    """E.g. label "DHE Alpine Realistic 540m Scale 0.4 BETA", ID "DHE-Alpine-Realistic-540m-Scale-0_4-BETA".
+    """E.g. label "DHE Alpine Realistic 540m Scale 0.4 BETA", ID "DHE-Alpine-Realistic-540m-Scale-0_4-BETA"; with
+    real heights (`height_scale` 1 at scale 1:2) "DHE Alpine Realistic 540m Scale 0.5 Heights 1 BETA".
 
     The ID is used as folder, mod ID and climate ID: no spaces, ':' or '/', and '.' becomes '_' (a '.' next to
     '.clima' in file names confuses the game).
@@ -97,6 +98,8 @@ class ClimateNaming:
     beta_tag: str
     reference_m: float
     scale: float
+    height_scale: float
+    """Real metres per game metre of height (`MapFormat.height_scale`)."""
 
     @property
     def factor(self) -> str:
@@ -104,12 +107,22 @@ class ClimateNaming:
         return f"{1 / self.scale:.3g}"
 
     @property
+    def height_factor(self) -> str:
+        """Height scale as decimal game metres per real metre, like `factor`."""
+        return f"{1 / self.height_scale:.3g}"
+
+    @property
+    def _heights_differ(self) -> bool:
+        return self.height_factor != self.factor
+
+    @property
     def ref(self) -> int:
         return round(self.reference_m)
 
     @property
     def label(self) -> str:
-        return f"{self.prefix} {self.name} {self.ref}m Scale {self.factor} {self.beta_tag}".strip()
+        heights = f" Heights {self.height_factor}" if self._heights_differ else ""
+        return f"{self.prefix} {self.name} {self.ref}m Scale {self.factor}{heights} {self.beta_tag}".strip()
 
     @property
     def mod_id(self) -> str:
@@ -117,8 +130,9 @@ class ClimateNaming:
 
     @property
     def stamp(self) -> str:
-        """Two-line text printed on the mod's pictures, e.g. "540m" / "0.4"."""
-        return f"{self.ref}m\n{self.factor}"
+        """Text printed on the mod's pictures, e.g. "540m" / "0.4" (third line: the height factor if it differs)."""
+        heights = f"\n{self.height_factor}" if self._heights_differ else ""
+        return f"{self.ref}m\n{self.factor}{heights}"
 
 
 class LandscapeParams(NodeParams):
@@ -146,7 +160,7 @@ class Identity(NamedTuple):
 
 def _naming(reference_m: float, map_format: MapFormat, params: IdentityParams) -> ClimateNaming:
     return ClimateNaming(params.publishing.prefix, params.landscape().name, params.publishing.beta_tag, reference_m,
-                         map_format.scale)
+                         map_format.scale, height_scale=map_format.height_scale)
 
 
 @node("climate.identity")
@@ -180,7 +194,7 @@ def definition(clima: LuaData, identity: ClimateIdentityData, reference_m: float
     """The climate definition: names, own trees, import layers on their slots, map preview levels, the own economy
     (empty path: the game's economy)."""
     preset = params.landscape().primary
-    game = GameHeights(reference_m, map_format.game_per_real)
+    game = GameHeights(reference_m, map_format.height_game_per_real)
     levels = (game.of(preset.map_preview_level), game.of(preset.heights.snow_start))
     document = ClimaDefinitionEditor(clima.document(), identity.identity()).apply(
         preset.slots.layers, economy_path or None, levels, original_layers=preset.slots.original)

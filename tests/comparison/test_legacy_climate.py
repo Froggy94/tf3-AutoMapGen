@@ -37,7 +37,7 @@ pytestmark = [pytest.mark.slow,
                                  or not LEGACY_PYTHON.is_file(),
                                  reason="legacy project with its venv and a golden-master run, or the game, not found")]
 
-FORMAT = MapFormat(3.072, 3.072, 2)
+FORMAT = MapFormat(3.072, 3.072, 2, 2)
 CLASSIC = {"enabled": True}          # switches on the Classic Trees whose values the preset keeps
 
 LEGACY_TREES = """
@@ -74,7 +74,7 @@ heights = GameHeights(Elevation(540), 0.5)
 p = landscape.primary
 adapter.apply_height_limits(material, imports, heights, p.heights, p.ground.steep_rock, p.top)
 MaterialTreeBuilder(material, adapter, landscape, MaterialPaths(sys.argv[4])).build()
-ImportTreeBuilder(imports, adapter, landscape, heights).build()
+ImportTreeBuilder(imports, adapter, landscape, heights, 0.5).build()
 material.document.write(out / "material.tree.lua")
 imports.document.write(out / "import.tree.lua")
 """

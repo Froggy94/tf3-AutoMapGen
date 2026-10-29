@@ -1,0 +1,95 @@
+# Texts and picture of the published climate mod for lowland maps (nodes/climate/package.py: ClimateTexts); the
+# preset lowland_realistic.toml extends this file after alpine.toml. Placeholders: {label} {ref} {factor} {factor_de}
+# {conifer_start} {conifer_full} {tree_line} {snow_start} {snow_full} {economy_de} {economy_en} {name} (landscape)
+# {prefix} {beta} (publishing.toml); summary and the in-game climate description only {factor} and {ref}.
+
+[defaults.climate_texts]
+summary = "Temperate lowland climate for maps made from real elevation data, scale {factor}, base height {ref} m. Only for maps made for this climate! BETA"
+tags = ["Temperate"]
+# Picture of the mod thumbnail and the climate tile (the author's own picture)
+picture = "assets/pictures/climate.png"
+icon_size = [700, 400]                  # climate tile when creating a map
+
+[defaults.climate_texts.description]
+de = """
+!!! EXPERIMENTELLE BETA-VERSION !!!
+
+!!! WICHTIG: Dieses Klima nur für Karten verwenden, die damit erstellt wurden (siehe Beschreibung der Karte) !!!
+Es verändert Vegetation, Bodentexturen und Höhenstufen und ist genau auf einen Maßstab und eine Bezugshöhe abgestimmt. Für andere Karten oder Spielstände gewählt, kann es diese UNBRAUCHBAR machen. Spielstände mit diesem Klima lassen sich ohne den Mod nicht mehr laden – den Mod also nicht deaktivieren, solange solche Spielstände genutzt werden.
+
+{label}
+Gemäßigtes Klima für Karten aus echten Höhendaten des Flachlands. Alle Höhengrenzen beruhen auf echten Metern über dem Meer und sind für diese Variante umgerechnet:
+- Maßstab {factor_de}: 1 m in der Wirklichkeit = {factor_de} m im Spiel, waagerecht und senkrecht gleich
+- Bezugshöhe {ref} m ü. M. = Spielhöhe 0 (Wasserlinie)
+
+Landschaft
+- Laubreicher Mischwald (etwa zwei Drittel Laubbäume); auf Anhöhen ab {conifer_start} m mehr Nadelwald, ab {conifer_full} m reiner Nadelwald
+- Baumgrenze bei {tree_line} m, Schnee ab {snow_start} m, geschlossene Schneedecke ab {snow_full} m (im Flachland meist nicht erreicht)
+- Wiesen, Weiden und Äcker mit Weizen, Mais und gepflügten Feldern
+- Schiffbare Kanäle und Flüsse als echtes Wasser, kleinere Flüsse und Bäche mit der Wasser-Textur des Spiels gemalt
+- Gemalte Flussbetten laufen sanft zum echten Wasser hinab
+- Keine Felsbrocken in Wald, Ufer und Flussbett
+- Bäume nur dort, wo die Karte Wald vorsieht; keine Bäume auf Wasser, Ufer und im Flussbett
+
+{economy_de}
+
+Bekannte Probleme (Beta)
+- Große Karten brauchen beim Erstellen und Laden sehr viel Arbeitsspeicher.
+- Nach „Neues Spiel“ aus einer Karte kann das Spiel beim Verlassen abstürzen. Abhilfe: nach dem Start speichern und den Spielstand neu laden – nach dem Laden eines Spielstands trat der Absturz bisher nicht auf.
+
+Für Kartenersteller (Heightmap-Import im Editor)
+Klima „{label}“, Wasserhöhe 0, Mindesthöhe negativ (Seegrund, z. B. −16), Maximalhöhe = (höchster Punkt − {ref} m) × {factor_de}. Dazu die Biom-Datei und die Graustufen-Masken für Wald, Wiese, Acker, Fels, Flussbett, Wasser, Ufer und die Fruchtarten Weizen, Mais und gepflügter Acker importieren. Ohne Wald-Maske bleibt die Karte baumlos.
+
+Weitere Varianten (andere Maßstäbe und Bezugshöhen) folgen demselben Schema: „{prefix} {name} <Bezugshöhe>m Scale <Maßstab> {beta}“."""
+en = """
+!!! EXPERIMENTAL BETA VERSION !!!
+
+!!! IMPORTANT: Only use this climate for maps that were made with it (see the map's description) !!!
+It changes vegetation, ground textures and altitude zones and is tuned to exactly one scale and one base height. Chosen for other maps or savegames, it can make them UNUSABLE. Savegames using this climate cannot be loaded without the mod – do not disable the mod while you use such savegames.
+
+{label}
+Temperate climate for maps made from real elevation data of the lowlands. All altitude limits are based on real metres above sea level and converted for this variant:
+- Scale {factor}: 1 m in reality = {factor} m in the game, horizontally and vertically
+- Base height {ref} m a.s.l. = game height 0 (water line)
+
+Landscape
+- Broadleaf-rich mixed forest (about two thirds broadleaf trees); on hills more conifers from {conifer_start} m, pure conifer forest from {conifer_full} m
+- Tree line at {tree_line} m, snow from {snow_start} m, closed snow cover from {snow_full} m (rarely reached in the lowlands)
+- Meadows, pastures and fields with wheat, maize and ploughed land
+- Navigable canals and rivers as real water, smaller rivers and brooks painted with the game's water texture
+- Painted river beds descend gently to the real water
+- No boulders in forests, on shores and in river beds
+- Trees only where the map has forest; no trees on water, shores and river beds
+
+{economy_en}
+
+Known issues (beta)
+- Large maps need a lot of memory (RAM) when created and loaded.
+- After "New game" from a map, the game may crash when you quit. Workaround: save right after starting and load that savegame – so far the crash never happened after loading a savegame.
+
+For map makers (heightmap import in the editor)
+Climate "{label}", water level 0, minimum height negative (lake bed, e.g. -16), maximum height = (highest point - {ref} m) x {factor}. Also import the biome file and the greyscale masks for forest, meadow, cropland, rock, river bed, water, shore and the crop types wheat, maize and ploughed field. Without a forest mask the map stays treeless.
+
+Further variants (other scales and base heights) follow the same scheme: "{prefix} {name} <base height>m Scale <scale> {beta}"."""
+
+# Paragraph about the economy ({economy_de}, {economy_en}): the game's economy or the own one (climate_mod.toml)
+[defaults.climate_texts.economy.standard]
+de = "Wirtschaft\nUnveränderte gemäßigte Wirtschaft des Spiels (alle Industrien und Güter wie im Klima „Gemäßigt“), keine weiteren Mods nötig."
+en = "Economy\nUnchanged temperate economy of the base game (all industries and cargo types as in the \"Temperate\" climate), no further mods needed."
+
+[defaults.climate_texts.economy.custom]
+de = "Wirtschaft „Flachland“\nIndustrien und Güter des gemäßigten Klimas, ohne weitere Mods. Keine Bohrinseln; Raffinerie an Ölquellen, Glashütte an Sandgruben."
+en = "Economy \"Lowlands\"\nIndustries and cargo types of the temperate climate, no further mods needed. No oil platforms; refinery supplied by oil wells, glass works by sand pits."
+
+
+# In-game climate description
+[defaults.climate_texts.climate_description]
+en = "Temperate lowland, scale {factor}, game height 0 = {ref} m - only for maps made with this climate! BETA"
+de = "Gemäßigtes Flachland, Maßstab {factor}, Spielhöhe 0 = {ref} m - nur für damit erstellte Karten! BETA"
+
+# German translations of further in-game texts
+[defaults.climate_texts.strings_de]
+"Lowlands (all industries)" = "Flachland (alle Industrien)"
+Lowlands = "Flachland"
+"Water clear" = "Wasser klar"
+Waterfall = "Wasserfall"

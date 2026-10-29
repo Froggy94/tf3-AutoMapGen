@@ -55,7 +55,7 @@ def material_tree(original: NodeTreeData, reference_m: float, map_format: MapFor
     adapter = adapter_for(landscape.primary.base_climate)
     tree = original.tree()
     preset = landscape.primary
-    adapter.apply_material_heights(tree, GameHeights(reference_m, map_format.game_per_real), preset.heights,
+    adapter.apply_material_heights(tree, GameHeights(reference_m, map_format.height_game_per_real), preset.heights,
                                    preset.ground.steep_rock, preset.top)
     MaterialTreeBuilder(tree, adapter, landscape, MaterialPaths(mod_id)).build()
     return NodeTreeData.of(tree.document)
@@ -67,8 +67,8 @@ def import_tree(original: NodeTreeData, reference_m: float, map_format: MapForma
     """Import: the landcover layers stored for the material tree, trees and rocks; height rules at real elevations."""
     landscape = params.landscape()
     adapter = adapter_for(landscape.primary.base_climate)
-    game = GameHeights(reference_m, map_format.game_per_real)
+    game = GameHeights(reference_m, map_format.height_game_per_real)
     tree = original.tree()
     adapter.apply_import_heights(tree, game, landscape.primary.heights, landscape.primary.top)
-    ImportTreeBuilder(tree, adapter, landscape, game).build()
+    ImportTreeBuilder(tree, adapter, landscape, game, map_format.game_per_real).build()
     return NodeTreeData.of(tree.document)

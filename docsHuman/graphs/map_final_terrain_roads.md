@@ -11,7 +11,8 @@ flowchart LR
   n_road_keep_free["road_keep_free<br/><small>mask.any</small>"]
   n_all_road_cores["all_road_cores<br/><small>mask.any</small>"]
   n_outputs[\"outputs<br/>road_plan: road_plan"\]
-  n_final -- "heights<br/>water<br/>forest<br/>rock<br/>glacier" --> n_road_network
+  n_ramp -- "heights" --> n_road_network
+  n_final -- "no_cover -> water<br/>riverbed<br/>forest<br/>rock<br/>glacier" --> n_road_network
   n_inputs -- "towns<br/>industries<br/>map_format<br/>land_min_m<br/>biome_preview -> base" --> n_road_network
   n_road_network -- "plan -> document" --> n_roads_plan_json
   n_road_network -- "preview -> image" --> n_roads_plan_png

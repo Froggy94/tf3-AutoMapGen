@@ -54,6 +54,7 @@ regions = 6
 smooth_game_m = 900
 color = [240, 200, 40]
 label = "arable farming"
+height_m = [0, 0, 750, 1100]           # real height m a.s.l.: from 0, full from, full to, to 0
 
 [defaults.industries.sites.resources.livestock]
 industries = ["livestock_farm"]
@@ -62,6 +63,7 @@ regions = 6
 smooth_game_m = 900
 color = [150, 210, 80]
 label = "livestock"
+height_m = [450, 550, 1400, 1800]
 
 [defaults.industries.sites.resources.forest]
 industries = ["forest"]
@@ -70,6 +72,7 @@ regions = 6
 smooth_game_m = 900
 color = [20, 110, 40]
 label = "forestry"
+height_m = [0, 0, 1500, 1900]
 
 [defaults.industries.sites.resources.plantation]
 industries = ["rubber_farm"]
@@ -78,6 +81,7 @@ regions = 1
 smooth_game_m = 900
 color = [200, 120, 200]
 label = "plantation"
+height_m = [0, 0, 700, 900]
 
 [defaults.industries.sites.resources.coal]
 industries = ["coal_mine"]
@@ -86,6 +90,7 @@ regions = 2
 smooth_game_m = 1500
 color = [40, 40, 40]
 label = "coal"
+height_m = [550, 650, 1100, 1300]
 peak = 0.45
 radius_game_m = 4500
 spacing_game_m = 8000
@@ -97,6 +102,7 @@ regions = 2
 smooth_game_m = 1500
 color = [170, 70, 40]
 label = "iron ore"
+height_m = [800, 1000, 1800, 2200]
 peak = 0.45
 radius_game_m = 4500
 spacing_game_m = 8000
@@ -108,6 +114,7 @@ regions = 3
 smooth_game_m = 1200
 color = [150, 150, 160]
 label = "stone"
+height_m = [500, 700, 1600, 2000]
 peak = 0.45
 radius_game_m = 4500
 spacing_game_m = 8000
@@ -119,6 +126,7 @@ regions = 2
 smooth_game_m = 1200
 color = [190, 110, 60]
 label = "clay"
+height_m = [0, 0, 750, 950]
 
 [defaults.industries.sites.resources.sand]
 industries = ["sand_pit"]
@@ -127,6 +135,7 @@ regions = 3
 smooth_game_m = 1000
 color = [230, 210, 150]
 label = "sand/gravel"
+height_m = [0, 0, 1000, 1300]
 
 [defaults.industries.sites.resources.oil]
 industries = ["oil_well"]
@@ -135,6 +144,7 @@ regions = 1
 smooth_game_m = 2000
 color = [120, 40, 140]
 label = "oil"
+height_m = [0, 0, 700, 850]
 
 [defaults.industries.sites.resources.fish]
 industries = ["fishing_grounds"]
@@ -153,6 +163,7 @@ production_per_type = { saw_mill = 2, bricks_works = 2, cement_plant = 2 }
 medium_town_capacity = 150
 large_town_capacity = 400
 specializations = { village = 0, medium = 1, large = 2 }
+equal_town_slots = 2              # factories per town when the real town size is ignored
 import_cost_game_m = 20000
 own_allowed = ["fish"]
 trade_points = 0

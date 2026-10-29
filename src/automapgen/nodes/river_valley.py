@@ -188,7 +188,7 @@ class _PlanMover:
         real = river["real"]
         count = len(real)
         painted = [not (real[k] and real[k + 1]) for k in range(count - 1)]
-        out: dict[str, list[Any]] = {"points": [], "real": [], **{a: [] for a in _ATTRIBUTES}}
+        out: dict[str, list[Any]] = {"points": [], "real": [], "navigable": [], **{a: [] for a in _ATTRIBUTES}}
         k = 0
         while k < count - 1:
             if not painted[k]:
@@ -207,6 +207,7 @@ class _PlanMover:
     def _append_vertex(out: dict[str, list[Any]], river: dict[str, Any], k: int) -> None:
         out["points"].append(river["points"][k])
         out["real"].append(river["real"][k])
+        out["navigable"].append(river.get("navigable", [False] * len(river["points"]))[k])
         for a in _ATTRIBUTES:
             out[a].append(river[a][k])
 
@@ -226,6 +227,8 @@ class _PlanMover:
         fractions = run.after / self._scale
         out["points"] += [[round(float(u), 6), round(float(v), 6)] for u, v in fractions[:-1]]
         out["real"] += [river["real"][start]] + [False] * (len(at) - 2)
+        navigable = river.get("navigable", [False] * len(river["points"]))
+        out["navigable"] += [navigable[start]] + [all(navigable[start:end + 1])] * (len(at) - 2)
         for a in _ATTRIBUTES:
             values = np.interp(at, along, np.array(river[a][start:end + 1], dtype=np.float64))
             out[a] += [round(float(x), _DECIMALS[a]) for x in values[:-1]]

@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/graph.schema.json",
   "id": "map_final_terrain",
   "title": "Final Terrain",
-  "description": "The terrain that is written: evened out around towns (tilted plane) and industries (level), the terrain chain again on the settled heights (water, banks, layers), country roads and paths worked into the terrain (level across, smoothed grade-limited profile, cut and fill), the riverbed groove, and the 16-bit heightmap with its height references.",
+  "description": "The terrain that is written: evened out around towns (tilted plane) and industries (level), the terrain chain again on the settled heights (water, banks, layers), painted riverbeds ramped down into real water, country roads and paths worked into the terrain (level across, smoothed grade-limited profile, cut and fill), the riverbed groove, and the 16-bit heightmap with its height references.",
   "inputs": {
     "land": "field",
     "worldcover_water": "mask",
@@ -45,6 +45,18 @@
         "heightmap.max_height_m"
       ],
       "description": "white of the heightmap; empty = highest point"
+    },
+    "ramp_length_game_m": {
+      "to": [
+        "ramp.length_game_m"
+      ],
+      "description": "ramp of the painted riverbed down to real water over this length (game m); 0 = no ramp"
+    },
+    "ramp_corridor_game_m": {
+      "to": [
+        "ramp.corridor_game_m"
+      ],
+      "description": "the terrain beside the ramp follows it this far on each side (game m)"
     },
     "real_water_until_m": {
       "to": [
@@ -101,6 +113,9 @@
     },
     "path_terrain": {
       "type": "paths.terrain"
+    },
+    "ramp": {
+      "type": "riverbed.ramp"
     },
     "groove": {
       "type": "riverbed.groove"
@@ -171,11 +186,19 @@
       "final.land_min_m"
     ],
     [
+      "inputs.map_format",
+      "final.map_format"
+    ],
+    [
       "inputs.farmland",
       "final.farmland"
     ],
     [
       "final.heights",
+      "ramp.heights"
+    ],
+    [
+      "ramp.heights",
       "road_terrain.heights"
     ],
     [
@@ -209,6 +232,22 @@
     [
       "inputs.map_format",
       "path_terrain.map_format"
+    ],
+    [
+      "final.riverbed",
+      "ramp.bed"
+    ],
+    [
+      "final.real",
+      "ramp.real"
+    ],
+    [
+      "inputs.land_min_m",
+      "ramp.land_min_m"
+    ],
+    [
+      "inputs.map_format",
+      "ramp.map_format"
     ],
     [
       "path_terrain.heights",

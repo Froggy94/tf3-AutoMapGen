@@ -2,7 +2,7 @@
   "$schema": "../../../schemas/graph.schema.json",
   "id": "map_biome_creation",
   "title": "Biome Creation",
-  "description": "The masks of the game's import dialog, on the heightmap grid: the biome map (grey 0/63/127/191/255) and the mountain mask; forest (WorldCover trees, minus water, banks, riverbed, fields and gaps along paths and roads), meadow, cropland (OpenStreetMap fields), rock, glacier, painted water, shore, riverbed, the crop layers (corn, wheat, soil) and the transition mask; land cover and crop previews.",
+  "description": "The masks of the game's import dialog, on the heightmap grid: the biome map (grey 0/63/127/191/255) and the mountain mask; forest (WorldCover trees, minus water, banks, riverbed, fields, gaps along paths and roads and a strip along its edge), meadow, cropland (OpenStreetMap fields), rock, glacier, painted water, shore, riverbed, the crop layers (corn, wheat, soil) and the transition mask; land cover and crop previews.",
   "inputs": {
     "biomes": "classes",
     "mountains": "mask",
@@ -37,6 +37,12 @@
         "road_gaps.width_game_m"
       ],
       "description": "gap in the forest along roads"
+    },
+    "forest_shrink_px": {
+      "to": [
+        "forest_edge.distance_px"
+      ],
+      "description": "shrink the forest by this many pixels along its edge (1 px = 4 game m; 0 = off): the game reads the layer coarsely and plants a whole cell as soon as it holds forest"
     },
     "transition": {
       "to": [
@@ -87,9 +93,19 @@
         "width_game_m": 0
       }
     },
+    "no_forest": {
+      "type": "mask.invert"
+    },
+    "forest_edge": {
+      "type": "mask.near",
+      "params": {
+        "distance_px": 0
+      },
+      "note": "outside the forest and a strip along its edge"
+    },
     "forest": {
       "type": "mask.subtract",
-      "note": "gaps along paths and roads"
+      "note": "gaps along paths and roads, the edge strip"
     },
     "forest_png": {
       "type": "graph:mask_png",
@@ -248,6 +264,18 @@
     ],
     [
       "road_gaps.mask",
+      "forest.minus"
+    ],
+    [
+      "inputs.forest",
+      "no_forest.mask"
+    ],
+    [
+      "no_forest.mask",
+      "forest_edge.mask"
+    ],
+    [
+      "forest_edge.mask",
       "forest.minus"
     ],
     [

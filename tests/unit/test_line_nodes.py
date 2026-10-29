@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from rasterio.crs import CRS
 
 from automapgen.graph import NodeContext
@@ -78,7 +79,7 @@ def test_terrain_under_roads_and_paths() -> None:
     slope = Field(np.tile(np.linspace(500, 520, 101, dtype=np.float32), (101, 1)).T.copy(), FRAME)   # rises N -> S
     road = RoadLines({"roads": [{"cls": "primary", "pts": [[0.5, 0.1], [0.5, 0.9]]}]})
     path = PathPlan({"track": [[[0.2, 0.1], [0.2, 0.9]]], "trail": []})
-    fmt = MapFormat(0.4, 0.4, 2)
+    fmt = MapFormat(0.4, 0.4, 2, 2)
 
     shaped = lines.road_terrain(slope, road, EMPTY, fmt, lines.RoadTerrainParams(), CONTEXT)
     path_shaped = lines.path_terrain(shaped.heights, path, EMPTY, shaped.core, fmt, lines.PathTerrainParams(), CONTEXT)
@@ -89,6 +90,18 @@ def test_terrain_under_roads_and_paths() -> None:
     assert np.array_equal(shaped.heights.values[:, 5], slope.values[:, 5])          # far from the road unchanged
     assert path_shaped.values[50, 20] < shaped.heights.values[50, 20]                # the path is slightly lowered
     assert nothing.heights is slope
+
+
+def test_road_terrain_sinks_by_the_height_factor() -> None:
+    flat = Field(np.full((101, 101), 500, dtype=np.float32), FRAME)
+    road = RoadLines({"roads": [{"cls": "primary", "pts": [[0.5, 0.1], [0.5, 0.9]]}]})
+    params = lines.RoadTerrainParams(sink_game_m=1.0)
+
+    scaled = lines.road_terrain(flat, road, EMPTY, MapFormat(0.4, 0.4, 2, 2), params, CONTEXT)
+    real = lines.road_terrain(flat, road, EMPTY, MapFormat(0.4, 0.4, 2, 1), params, CONTEXT)
+
+    assert scaled.heights.values[50, 50] == pytest.approx(498)        # 1 game m = 2 real m at 1:2
+    assert real.heights.values[50, 50] == pytest.approx(499)          # 1 game m = 1 real m with real heights
 
 
 def test_strip_and_preview_base() -> None:

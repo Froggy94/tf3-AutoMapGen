@@ -36,7 +36,7 @@ graphs or nodes.
 1. **Project** -> *New*, enter a map name. Keep the climate preset **Alpine Realistic**, leave the reference height
    empty (= the lowest point of the region) and keep the graph **map**.
 2. **Map**: choose the map size and the aspect ratio of the game; the scale stretches the region (1:2 = twice the
-   area, mountains half as high).
+   area, mountains half as high, unless you set your own height scale, e.g. 1 for real heights).
 3. **Location**: search a place and drag the rectangle over your region.
 4. Click **Generate**. If it is grey, the page tells you why. The first run downloads the data and takes a while;
    later runs reuse what is unchanged.

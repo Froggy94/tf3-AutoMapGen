@@ -1,5 +1,5 @@
-"""Painted riverbed of the river plan: a mask on the heightmap grid (10-20 m are only a few pixels) and the groove
-along its centre (the only terrain change of painted rivers)."""
+"""Painted riverbed of the river plan: a mask on the heightmap grid (10-20 m are only a few pixels), the groove
+along its centre and the ramp where a riverbed meets real water (the terrain changes of painted rivers)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import numpy as np
 from numpy.typing import NDArray
 from PIL import Image as PilImage
 from PIL import ImageDraw
-from scipy.ndimage import distance_transform_edt
+from scipy.ndimage import binary_dilation, distance_transform_edt, find_objects, label
 
 from automapgen.graph import NodeContext, NodeParams, node, param
 from automapgen.nodes.maps import GAME_METERS_PER_PIXEL, MapFormat
@@ -18,6 +18,9 @@ from automapgen.nodes.rasters import ClassMap, Field, Mask, resize_floats
 from automapgen.nodes.water import WATER_CLASS, BedSegment, BedSegments
 
 _ABOVE_WATER_LINE_GAME_M = 1.0
+_MEET_GAME_M = 40.0
+"""A riverbed meets real water within this distance (beds stop at the water's border of 25 game m)."""
+_EIGHT = np.ones((3, 3), dtype=bool)
 
 
 class Riverbed(NamedTuple):
@@ -67,7 +70,7 @@ def groove(heights: Field, centre: Mask, land_min_m: float, map_format: MapForma
     water line + 1 m (game). It makes a painted river look like a river course."""
     if params.depth_game_m <= 0 or not centre.values.any():
         return heights
-    p, scale, dem = params, map_format.game_per_real, heights.values
+    p, scale, dem = params, map_format.height_game_per_real, heights.values
     d_game = distance_transform_edt(~centre.values).astype(np.float32) * GAME_METERS_PER_PIXEL
     t = np.clip((d_game - p.width_game_m / 2) / max(p.smooth_game_m, 1e-6), 0, 1)
     profile = 0.5 * (1 + np.cos(np.pi * t))                     # 1 in the centre, 0 outside
@@ -78,6 +81,77 @@ def groove(heights: Field, centre: Mask, land_min_m: float, map_format: MapForma
     context.log(f"groove: {p.depth_game_m:g} m deep (game), {p.width_game_m:g} m wide, flanks {p.smooth_game_m:g} m; "
                 f"{int(sel.sum())} pixels, mean lowering {float((dem - new)[sel].mean()) * scale:.2f} m (game)")
     return heights.like(np.asarray(new, dtype=np.float32))
+
+
+class RampParams(NodeParams):
+    length_game_m: float = param(0.0, ge=0, unit="game m")
+    """The riverbed falls linearly to the water line over this length before it meets real water (0 = no ramp)."""
+    corridor_game_m: float = param(60.0, ge=0, unit="game m")
+    """The terrain beside the ramp follows it this far on each side (cosine falloff)."""
+
+
+@node("riverbed.ramp", output="heights")
+def ramp(heights: Field, bed: Mask, real: Mask, land_min_m: float, map_format: MapFormat, params: RampParams,
+         context: NodeContext) -> Field:
+    """Ramp where a painted riverbed meets real water: along the bed (`bed`) the terrain falls linearly over
+    `length_game_m` to the water line + 1 m (game) at the real water (`real`), the terrain beside it follows within
+    the corridor. Only lowers; beds that never meet real water stay as they are."""
+    if params.length_game_m <= 0 or not bed.values.any() or not real.values.any():
+        return heights
+    floor = land_min_m + _ABOVE_WATER_LINE_GAME_M / map_format.height_game_per_real
+    near_real = distance_transform_edt(~real.values) * GAME_METERS_PER_PIXEL <= _MEET_GAME_M
+    new = _Ramp(params, floor).apply(heights.values, bed.values, bed.values & near_real)
+    lowered = (heights.values - new) * map_format.height_game_per_real
+    context.log(f"ramps into real water: {params.length_game_m:g} m long (game), corridor {params.corridor_game_m:g} m;"
+                f" {int((lowered > 0).sum())} pixels, max lowering {float(lowered.max()):.1f} m (game)")
+    return heights.like(new)
+
+
+class _Ramp:
+    """Per riverbed piece that meets real water: geodesic distance along the bed from the meeting pixels, a linear
+    target height on the ramp, the corridor following the nearest ramp pixel."""
+
+    def __init__(self, params: RampParams, floor: float) -> None:
+        self._length_px = params.length_game_m / GAME_METERS_PER_PIXEL
+        self._corridor_px = params.corridor_game_m / GAME_METERS_PER_PIXEL
+        self._floor = np.float32(floor)
+
+    def apply(self, dem: NDArray[np.float32], bed: NDArray[np.bool_], meet: NDArray[np.bool_]) -> NDArray[np.float32]:
+        out = dem.astype(np.float32, copy=True)
+        labels, _ = label(bed, structure=_EIGHT)
+        pad = int(np.ceil(self._corridor_px)) + 1
+        reach = int(np.ceil(self._length_px)) + pad    # the ramp lies within its length of a meeting pixel
+        for i, sl in enumerate(find_objects(labels), start=1):
+            if sl is None:
+                continue
+            ys, xs = np.nonzero(meet[sl] & (labels[sl] == i))
+            if not len(ys):
+                continue
+            box = tuple(slice(max(s.start - pad, s.start + lo.min() - reach, 0),
+                              min(s.stop + pad, s.start + lo.max() + 1 + reach, n))
+                        for s, lo, n in zip(sl, (ys, xs), dem.shape, strict=True))
+            piece = labels[box] == i
+            new = self._piece(dem[box], piece, meet[box] & piece)
+            out[box] = np.minimum(out[box], new)
+        return out
+
+    def _piece(self, dem: NDArray[np.float32], piece: NDArray[np.bool_],
+               meet: NDArray[np.bool_]) -> NDArray[np.float32]:
+        dist = np.full(dem.shape, np.inf, dtype=np.float32)
+        dist[meet] = 0
+        front, reached = meet, meet.copy()
+        for step in range(1, int(np.ceil(self._length_px))):
+            front = binary_dilation(front, structure=_EIGHT) & piece & ~reached
+            if not front.any():
+                break
+            dist[front] = step
+            reached |= front
+        on_ramp = dist < self._length_px
+        target = self._floor + (dem - self._floor) * np.minimum(dist / self._length_px, 1)
+        d_px, (iy, ix) = distance_transform_edt(~on_ramp, return_indices=True)
+        t = np.clip(d_px / max(self._corridor_px, 1e-6), 0, 1)
+        weight = 0.5 * (1 + np.cos(np.pi * t))
+        return np.asarray(dem - weight * np.maximum(dem - target[iy, ix], 0), dtype=np.float32)
 
 
 class LandcoverParams(NodeParams):

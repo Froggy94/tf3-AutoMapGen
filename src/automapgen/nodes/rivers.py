@@ -18,7 +18,7 @@ import itertools
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, NamedTuple
+from typing import Any, Literal, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -42,7 +42,9 @@ def real_water_until(until_m: float | None, land_min_m: float) -> float:
     return land_min_m + REAL_WATER_ABOVE_M if until_m is None else until_m
 
 _PX = GAME_METERS_PER_PIXEL
+_NO_CEMT = ("", "0")                  # CEMT 0: recreational craft only, no cargo ships
 _REAL_COLOR = (20, 60, 230)
+_NAVIGABLE_COLOR = (130, 0, 200)
 _PAINTED_COLOR = (0, 190, 190)
 _WEIR_COLOR = (230, 0, 0)
 _WATER_COLOR = (150, 185, 215)
@@ -55,8 +57,9 @@ type NodeId = int
 @dataclass(frozen=True)
 class RiverPlan(JsonDocument):
     """The plan as plain data (the format of the `_rivers.json` file):
-    {ref_m, real_water_max_m, real_water_until_m, min_width_game_m,
-     rivers: [{name, points: [[u, v]], width_game_m: [], real: [], level_m: [], floor_m: []}], weirs: [...]}."""
+    {ref_m, real_water_max_m, real_water_until_m, min_width_game_m, real_water_rivers ("all" | "navigable"),
+     rivers: [{name, points: [[u, v]], width_game_m: [], real: [], navigable: [], level_m: [], floor_m: []}],
+     weirs: [...]}."""
 
     def summary(self) -> str:
         rivers = self.data["rivers"]
@@ -83,16 +86,19 @@ def hill_shade(dem: NDArray[np.float32], width: int, height: int) -> NDArray[np.
 
 @dataclass
 class RiverNetwork:
-    """Directed network: nodes in heightmap pixels, edges in flow direction, name per edge."""
+    """Directed network: nodes in heightmap pixels, edges in flow direction, name per edge, navigable edges (a node
+    is navigable when any edge at it is)."""
 
     pos: dict[NodeId, tuple[float, float]]
     succ: dict[NodeId, set[NodeId]] = field(default_factory=dict)
     pred: dict[NodeId, set[NodeId]] = field(default_factory=dict)
     edge_name: dict[tuple[NodeId, NodeId], str] = field(default_factory=dict)
-    boat: dict[NodeId, bool] = field(default_factory=dict)
+    navigable_edges: set[tuple[NodeId, NodeId]] = field(default_factory=set)
 
     @classmethod
-    def from_ways(cls, ways: OsmWays, projection: MapProjection, width: int, height: int) -> RiverNetwork:
+    def from_ways(cls, ways: OsmWays, projection: MapProjection, width: int, height: int,
+                  navigable: frozenset[int] = frozenset()) -> RiverNetwork:
+        """`navigable` = ids of the navigable ways."""
         all_ids = {r: (x, y) for w in ways.ways for r, x, y in w.nodes}
         ids = list(all_ids)
         uvs = projection.ring_to_uv([all_ids[i] for i in ids])
@@ -109,9 +115,12 @@ class RiverNetwork:
                     net.succ.setdefault(a, set()).add(b)
                     net.pred.setdefault(b, set()).add(a)
                     net.edge_name[(a, b)] = w.name
-                    if w.boat and w.boat != "no":
-                        net.boat[a] = net.boat[b] = True
+                    if w.id in navigable:
+                        net.navigable_edges.add((a, b))
         return net
+
+    def navigable_nodes(self) -> set[NodeId]:
+        return {n for edge in self.navigable_edges for n in edge}
 
     @property
     def nodes(self) -> list[NodeId]:
@@ -193,12 +202,41 @@ class RiverNetwork:
         return path
 
 
+class _Navigability:
+    """Which waterways are navigable: ways with a CEMT class, every way with the name of such a way or a name that
+    starts with one of `names` (case-insensitive), and unnamed canals connected to a navigable way (over shared OSM
+    points, also over further unnamed canals)."""
+
+    def __init__(self, names: tuple[str, ...]) -> None:
+        self._prefixes = tuple(n.casefold() for n in names if n)
+
+    def ways(self, ways: OsmWays) -> frozenset[int]:
+        """Ids of the navigable ways."""
+        cemt = {w.id for w in ways.ways if w.cemt not in _NO_CEMT}
+        cemt_names = {w.name for w in ways.ways if w.id in cemt and w.name}
+        navigable = {w.id for w in ways.ways
+                     if w.id in cemt or w.name in cemt_names
+                     or (w.name and w.name.casefold().startswith(self._prefixes))}
+        points = {r for w in ways.ways if w.id in navigable for r, _, _ in w.nodes}
+        pending = [w for w in ways.ways if w.kind == "canal" and not w.name and w.id not in navigable]
+        added = True
+        while added:
+            added = False
+            for w in [w for w in pending if any(r in points for r, _, _ in w.nodes)]:
+                navigable.add(w.id)
+                points.update(r for r, _, _ in w.nodes)
+                pending.remove(w)
+                added = True
+        return frozenset(navigable)
+
+
 @dataclass(frozen=True)
 class _Planned:
     network: RiverNetwork
     nodes: list[NodeId]
     floor: NDArray[Any]                   # valley floor per node (smoothed)
     real: NDArray[np.bool_]
+    navigable: NDArray[np.bool_]
     level: NDArray[np.float64]
     width: NDArray[np.float64]            # game metres
     weirs: list[dict[str, Any]]
@@ -218,6 +256,12 @@ class RiverParams(NodeParams):
     real_water_until_m: float | None = param(None, unit="m")
     """Real water (game water) only up to this height above sea level (the region's "real water up to"); None = 120 m
     above the lowest land. Higher = more real water, but real water is cut down to the water line (deep trenches)."""
+    real_water_rivers: Literal["all", "navigable"] = "all"
+    """Which waterways may be real water: "all" (below the limit) or only "navigable" ones (CEMT class, a name in
+    `navigable_names`, unnamed canals attached to them); other rivers stay painted water, also in flat land."""
+    navigable_names: tuple[str, ...] = ()
+    """Waterways whose name starts with one of these count as navigable (case-insensitive), e.g.
+    ("Dortmund-Ems-Kanal", "Mittellandkanal") where OSM has no CEMT class."""
     min_real_run_game_m: float = param(1000.0, ge=0, unit="game m")
     """Shorter connected pieces where real water is possible do not count (tolerance)."""
     min_width_game_m: float = param(60.0, gt=0, unit="game m")
@@ -257,7 +301,8 @@ def plan(ways: OsmWays, frame: MapFrame, heights: Field, floor: Field, water: Ma
     context.log(f"real water up to {until_m:g} m a.s.l. ({real_water_max_m:g} m above the "
                 f"reference height)")
     width, height = frame.width_px, frame.height_px
-    network = RiverNetwork.from_ways(ways, MapProjection(frame), width, height)
+    network = RiverNetwork.from_ways(ways, MapProjection(frame), width, height,
+                                     _Navigability(params.navigable_names).ways(ways))
     water_distance = distance_transform_edt(water.values)   # pixels to the edge of the water area
     planned = _RiverPlanner(params, width, height, context).plan(network, floor.values, water_distance, land_min_m,
                                                                   real_water_max_m)
@@ -288,17 +333,21 @@ class _RiverPlanner:
         nbr = [[idx[m] for m in net.succ.get(n, set()) | net.pred.get(n, set())] for n in nodes]
         for _ in range(p.floor_smooth_passes):
             fl = np.array([(fl[k] + sum(fl[j] for j in nb)) / (1 + len(nb)) for k, nb in enumerate(nbr)])
-        real = self._real(net, nodes, idx, nbr, fl - reference_m <= real_water_max_m)
+        navigable_nodes = net.navigable_nodes()
+        navigable = np.array([n in navigable_nodes for n in nodes], dtype=bool)
+        allowed = navigable if p.real_water_rivers == "navigable" else np.ones(len(nodes), bool)
+        real = self._real(net, nodes, idx, nbr, (fl - reference_m <= real_water_max_m) & allowed, allowed)
         level = self._levels(net, nodes, idx, real, fl, reference_m)
         weirs = self._weirs(net, nodes, idx, real, level, reference_m)
         width = np.where(real, self._real_width(uv, water_distance), self._painted_width(uv))
-        planned = _Planned(net, nodes, fl, real, level, width, weirs, reference_m, real_water_max_m)
+        planned = _Planned(net, nodes, fl, real, navigable, level, width, weirs, reference_m, real_water_max_m)
         self._log(planned)
         return planned
 
     def _real(self, net: RiverNetwork, nodes: list[NodeId], idx: dict[NodeId, int], nbr: list[list[int]],
-              capable: NDArray[np.bool_]) -> NDArray[np.bool_]:
-        """Drop "real possible" pieces shorter than min_real_run; real = everything downstream of the rest."""
+              capable: NDArray[np.bool_], allowed: NDArray[np.bool_]) -> NDArray[np.bool_]:
+        """Drop "real possible" pieces shorter than min_real_run; real = everything `allowed` downstream of the
+        rest."""
         seen = np.zeros(len(nodes), bool)
         for k in range(len(nodes)):
             if not capable[k] or seen[k]:
@@ -324,7 +373,7 @@ class _RiverPlanner:
             c = stack.pop()
             for m in net.succ.get(nodes[c], ()):
                 j = idx[m]
-                if not real[j]:
+                if not real[j] and allowed[j]:
                     real[j] = True
                     stack.append(j)
         return real
@@ -384,6 +433,10 @@ class _RiverPlanner:
         real_len = sum(net.seg_len(a, b) for a, b in net.edge_name if real[idx[a]] and real[idx[b]]) / 1000
         log = self._context.log
         log(f"river length {total:.0f} km in game, real water {real_len:.0f} km, painted {total - real_len:.0f} km")
+        navigable_len = sum(net.seg_len(a, b) for a, b in net.navigable_edges) / 1000
+        navigable_names = sorted({net.edge_name[e] for e in net.navigable_edges if net.edge_name.get(e)})
+        log(f"navigable waterways {navigable_len:.0f} km in game"
+            + (": " + ", ".join(navigable_names) if navigable_names else ""))
         biggest = sorted(planned.weirs, key=lambda w: -w["drop_m"])[:6]
         log(f"weirs (painted -> real): {len(planned.weirs)}" + (", largest steps: " + ", ".join(
             f"{w['name'] or '?'} {w['drop_m']:.0f} m" for w in biggest) if planned.weirs else ""))
@@ -400,15 +453,18 @@ def _plan_data(planned: _Planned, params: RiverParams, width: int, height: int) 
                "points": [[round(net.pos[n][0] / w1, 6), round(net.pos[n][1] / h1, 6)] for n in c],
                "width_game_m": [round(float(planned.width[idx[n]]), 1) for n in c],
                "real": [bool(planned.real[idx[n]]) for n in c],
+               "navigable": [bool(planned.navigable[idx[n]]) for n in c],
                "level_m": [round(float(planned.level[idx[n]]), 1) for n in c],
                "floor_m": [round(float(planned.floor[idx[n]]), 1) for n in c]} for c in net.chains()]
     real_max = planned.real_water_max_m
     return {"ref_m": ref, "real_water_max_m": real_max, "real_water_until_m": ref + real_max,
-            "min_width_game_m": params.min_width_game_m, "rivers": rivers, "weirs": planned.weirs}
+            "min_width_game_m": params.min_width_game_m, "real_water_rivers": params.real_water_rivers,
+            "rivers": rivers, "weirs": planned.weirs}
 
 
 class _RiverPreview:
-    """Hill shading, real water blue, painted turquoise (width to scale), weirs red, WorldCover water light blue."""
+    """Hill shading, real water blue (navigable purple), painted turquoise (width to scale), weirs red, WorldCover
+    water light blue."""
 
     def __init__(self, width: int, height: int, preview_width: int) -> None:
         self._width = width
@@ -427,9 +483,11 @@ class _RiverPreview:
         font, font_b = preview_font(14), preview_font(16, bold=True)
         f = pw / (self._width - 1)
         idx, uv, real, width = planned.index, planned.uv, planned.real, planned.width
+        navigable = planned.network.navigable_edges
         for (n, m) in planned.network.edge_name:
             a, b = idx[n], idx[m]
-            col = _REAL_COLOR if real[a] and real[b] else _PAINTED_COLOR
+            col = ((_NAVIGABLE_COLOR if (n, m) in navigable else _REAL_COLOR) if real[a] and real[b]
+                   else _PAINTED_COLOR)
             wd = max(2, round((width[a] + width[b]) / 2 / _PX * f))
             d.line([(uv[a, 0] * f, uv[a, 1] * f), (uv[b, 0] * f, uv[b, 1] * f)], fill=col, width=wd)
         for w in planned.weirs:
@@ -438,6 +496,7 @@ class _RiverPreview:
             d.text((x + 7, y - 8), f"{w['name']} {w['drop_m']:.0f} m", fill=(150, 0, 0), font=font, stroke_width=2,
                    stroke_fill=(255, 255, 255))
         for k, (col, txt) in enumerate([(_REAL_COLOR, "real water (level = reference height)"),
+                                        (_NAVIGABLE_COLOR, "real water, navigable waterway"),
                                         (_PAINTED_COLOR, "painted (level follows the valley)"),
                                         (_WEIR_COLOR, "weir (step painted -> real)"),
                                         (_WATER_COLOR, "existing water area (WorldCover)")]):

@@ -29,7 +29,7 @@ from scipy.ndimage import (
 )
 
 from automapgen.graph import NodeContext, NodeParams, data_type, node, param
-from automapgen.nodes.maps import GAME_METERS_PER_PIXEL, MapFrame
+from automapgen.nodes.maps import GAME_METERS_PER_PIXEL, MapFormat, MapFrame
 from automapgen.nodes.rasters import ClassMap, Field, Mask, resize_floats
 from automapgen.nodes.rivers import RiverPlan, real_water_until
 
@@ -160,16 +160,16 @@ class WaterShape(NamedTuple):
 
 
 @node("water.shape")
-def shape(heights: Field, landcover: ClassMap, land_min_m: float, params: ShapeParams, context: NodeContext,
-          rivers: RiverPlan | None = None) -> WaterShape:
+def shape(heights: Field, landcover: ClassMap, land_min_m: float, map_format: MapFormat, params: ShapeParams,
+          context: NodeContext, rivers: RiverPlan | None = None) -> WaterShape:
     """Levels lakes, smooths rivers, adds the real river bands of the river plan, shapes banks and real water.
 
     Outputs: terrain, landcover with shore and river classes, water core / levelled border / real water on the
     heightmap grid, and the painted riverbed pieces of the plan."""
     frame = heights.frame
     levels = _Levels(real_water_until(params.real_water_until_m, land_min_m) - land_min_m, params.water_sink_m)
-    shaped = _WaterShaper(params, levels, frame, context.log).shape(heights.values, landcover.values, land_min_m,
-                                                                   rivers.data if rivers is not None else None)
+    shaper = _WaterShaper(params, levels, frame, map_format.height_game_per_real, context.log)
+    shaped = shaper.shape(heights.values, landcover.values, land_min_m, rivers.data if rivers is not None else None)
     empty = np.zeros((frame.height_px, frame.width_px), dtype=bool)
 
     def mask(values: BoolMap | None) -> Mask:
@@ -224,6 +224,8 @@ class _Bodies:
 class _RiverBands:
     mask: BoolMap
     real: BoolMap
+    crossed: BoolMap                   # lake pixels under a real band (the lake keeps no level of its own)
+    painted_crossing: BoolMap          # under painted segments of non-navigable rivers ("navigable" plans only)
     level: FloatMap
     segments: list[BedSegment]
 
@@ -271,7 +273,8 @@ class _BodyClassifier:
 
 class _RiverBandPainter:
     """Rivers of the river plan: real sections become a band of water (level = water line), painted sections are
-    kept as riverbed segments."""
+    kept as riverbed segments; in a "navigable" plan the painted segments of non-navigable rivers are also drawn as a
+    mask (`painted_crossing`)."""
 
     def __init__(self, frame: MapFrame, water_line: float, real_water_max_m: float, log: Log) -> None:
         self._frame = frame
@@ -284,22 +287,29 @@ class _RiverBandPainter:
         level_img = PilImage.new("F", (grid.cols, grid.rows), 0.0)
         mask_img = PilImage.new("L", (grid.cols, grid.rows), 0)
         real_img = PilImage.new("L", (grid.cols, grid.rows), 0)
+        painted_img = PilImage.new("L", (grid.cols, grid.rows), 0)
         d_l, d_m, d_r = ImageDraw.Draw(level_img), ImageDraw.Draw(mask_img), ImageDraw.Draw(real_img)
+        d_p = ImageDraw.Draw(painted_img)
+        navigable_plan = plan.get("real_water_rivers", "all") == "navigable"
         segments = []
         for river in plan["rivers"]:
             pts = [(u * (grid.cols - 1), v * (grid.rows - 1)) for u, v in river["points"]]
             for k in range(len(pts) - 1):
                 w_game = (river["width_game_m"][k] + river["width_game_m"][k + 1]) / 2
-                if not (river["real"][k] and river["real"][k + 1]):
-                    segments.append(BedSegment(tuple(river["points"][k]), tuple(river["points"][k + 1]), w_game))
-                    continue
                 wpx = max(1, round(self._frame.game_to_real_m(w_game) / grid.px))
                 seg = [pts[k], pts[k + 1]]
+                if not (river["real"][k] and river["real"][k + 1]):
+                    segments.append(BedSegment(tuple(river["points"][k]), tuple(river["points"][k + 1]), w_game))
+                    if navigable_plan and not (river["navigable"][k] and river["navigable"][k + 1]):
+                        d_p.line(seg, fill=255, width=wpx, joint="curve")
+                    continue
                 d_l.line(seg, fill=float(self._water_line), width=wpx, joint="curve")
                 d_m.line(seg, fill=255, width=wpx, joint="curve")
                 d_r.line(seg, fill=255, width=wpx, joint="curve")
-        mask = (np.asarray(mask_img) > 0) & ~lake     # lakes keep their level
-        return _RiverBands(mask, mask & (np.asarray(real_img) > 0), np.asarray(level_img, dtype=np.float32), segments)
+        mask = (np.asarray(mask_img) > 0) & ~lake     # lakes keep their shape and level, unless the band is real
+        real = np.asarray(real_img) > 0
+        return _RiverBands(mask, mask & real, lake & real, np.asarray(painted_img) > 0,
+                           np.asarray(level_img, dtype=np.float32), segments)
 
     def _check(self, plan: Mapping[str, Any]) -> None:
         used_until = plan["ref_m"] + plan["real_water_max_m"]
@@ -313,10 +323,12 @@ class _RiverBandPainter:
 class _WaterShaper:
     """Levels water and border, smooths the banks, lowers real water, at work and full resolution."""
 
-    def __init__(self, params: ShapeParams, levels: _Levels, frame: MapFrame, log: Log) -> None:
+    def __init__(self, params: ShapeParams, levels: _Levels, frame: MapFrame, height_game_per_real: float,
+                 log: Log) -> None:
         self._params = params
         self._levels = levels
         self._frame = frame
+        self._height_game_per_real = height_game_per_real
         self._log = log
 
     def shape(self, dem: FloatMap, landcover: NDArray[np.uint8], land_min_m: float,
@@ -378,7 +390,7 @@ class _WaterShaper:
             del m, smooth
         real = keep & (surface - water_line < real_water_max_m)
         if bands is not None:
-            real = self._real_with_rivers(surface, real, keep, bands, grid, water_line)
+            real = self._real_with_rivers(surface, real, keep, bands, bodies.labels, grid, water_line)
             keep = keep | bands.mask
             river = river | bands.mask
             lake = lake & ~bands.mask
@@ -388,9 +400,13 @@ class _WaterShaper:
         return _Surfaces(keep, lake, river, real, lake | real, sink, surface - sink)
 
     def _real_with_rivers(self, surface: FloatMap, real: BoolMap, keep: BoolMap, bands: _RiverBands,
-                          grid: _WorkGrid, water_line: float) -> BoolMap:
-        """River band: level and real/painted from the plan. Other water is real only when connected to a real
-        river or near the water line - else painted at its own height (no craters around ponds)."""
+                          body_labels: NDArray[np.int32], grid: _WorkGrid, water_line: float) -> BoolMap:
+        """River band: level and real/painted from the plan. A lake crossed by a real band is real (a flat canal
+        just above the real water limit would else stay painted inside the real river). Other water is real only when
+        connected to a real river or near the water line - else painted at its own height (no craters around ponds).
+        A "navigable" plan keeps water crossed by a painted non-navigable river painted when that river crosses more
+        of its WorldCover area than real bands do: a river under or beside a canal stays painted water at its width,
+        while the canal's own water at a brook mouth stays real."""
         p = self._params
         surface[bands.mask] = bands.level[bands.mask]
         border_m = self._frame.game_to_real_m(p.banks.border_game_m)
@@ -402,11 +418,25 @@ class _WaterShaper:
         np.minimum.at(low, rest_lab.ravel(), (surface - water_line).ravel())
         ok_ids |= low <= p.bodies.isolated_real_max_m
         ok_ids[0] = False
+        crossed_ids = np.zeros(n_rest + 1, bool)
+        crossed_ids[np.unique(rest_lab[bands.crossed])] = True
+        crossed_ids[0] = False
+        painted_ids = np.zeros(n_rest + 1, bool)
+        count = body_labels.max() + 1
+        by_band = np.bincount(body_labels[bands.real | bands.crossed], minlength=count)
+        by_painted = np.bincount(body_labels[bands.painted_crossing], minlength=count)
+        river_water = (by_painted > by_band)[body_labels]
+        painted_ids[np.unique(rest_lab[bands.painted_crossing & river_water])] = True
+        painted_ids[0] = False
+        painted_ids &= ~crossed_ids
+        if bands.painted_crossing.any():
+            self._log(f"water areas crossed by a painted non-navigable river: {int(painted_ids.sum())} kept painted")
         n_painted = int((~ok_ids[1:] & (np.bincount(
             rest_lab[real & ~bands.mask].ravel(), minlength=n_rest + 1)[1:] > 0)).sum())
         self._log(f"water areas without connection to a real river and more than {p.bodies.isolated_real_max_m:g} m "
                   f"above the water line: {n_painted} painted instead of real")
-        return np.asarray((real & ~bands.mask & ok_ids[rest_lab]) | bands.real)
+        ok_ids &= ~painted_ids
+        return np.asarray((real & ~bands.mask & ok_ids[rest_lab]) | crossed_ids[rest_lab] | bands.real)
 
     def _report(self, bodies: _Bodies, real: BoolMap, water_line: float, with_rivers: bool) -> None:
         """Lakes from report_min_ha with level, area and whether they are real (lowered) or painted."""
@@ -418,7 +448,7 @@ class _WaterShaper:
         real_cnt = np.bincount(bodies.labels[real], minlength=bodies.count + 1)
         real_max, isolated_max = self._levels.real_water_max_m, p.bodies.isolated_real_max_m
         until = water_line + real_max
-        scale = self._frame.horizontal_scale
+        scale = self._height_game_per_real
         self._log(f"lakes from {p.report_min_ha:g} ha (real water up to {until:g} m a.s.l.; without connection to a "
                   f"real river only up to {water_line + isolated_max:g} m):")
         for i in sorted(ids, key=lambda i: -bodies.area_ha[i]):

@@ -35,7 +35,7 @@ from scipy.ndimage import (
     minimum_filter,
 )
 
-from automapgen.graph import NodeContext, NodeParams, data_type, node
+from automapgen.graph import NodeContext, NodeParams, data_type, node, param
 from automapgen.nodes.documents import JsonDocument, JsonDocumentCodec
 from automapgen.nodes.gamefiles import GameFiles
 from automapgen.nodes.images import Image
@@ -93,6 +93,8 @@ class ResourceSpec(_Settings):
     """Own area radius (default: region_radius_game_m)."""
     spacing_game_m: float | None = None
     """Own peak spacing (default: region_spacing_game_m)."""
+    height_m: tuple[float, float, float, float] = (-1e6, -1e6, 1e6, 1e6)
+    """Real height band of the suitability in m a.s.l. (from 0, full from, full to, to 0); unused by fish."""
 
 
 class SiteParams(_Settings):
@@ -143,6 +145,8 @@ class PlanParams(_Settings):
     """... and from this large (complex products); below: villages, agriculture."""
     specializations: dict[str, int]
     """Factories per town class (village, medium, large)."""
+    equal_town_slots: int
+    """Factories per town when the real town size is ignored (all towns medium)."""
     import_cost_game_m: float
     """An input without source on the map (foreign trade) counts as this far."""
     own_allowed: tuple[str, ...]
@@ -164,7 +168,8 @@ class PlanParams(_Settings):
     local_max_game_m: float
     """See local_only."""
     far_min_capacity: float
-    """From this start capacity one long-distance cargo (commercial/industrial in turns)."""
+    """From this start capacity one long-distance cargo (commercial/industrial in turns; all towns when the real
+    town size is ignored)."""
     balance_game_m: float
     """Local cargos: per town served already (per producer) this much detour."""
     towns_per_local_producer: int
@@ -269,6 +274,15 @@ class IndustrySettings(_Settings):
 class IndustryParams(NodeParams):
     industries: IndustrySettings
     """The industry planning (from the climate preset)."""
+    ignore_town_size: bool = False
+    """industries.plan only: all towns equal (they start at the same size): each is medium with
+    plan.equal_town_slots factories and gets one long-distance cargo (commercial/industrial in turns)."""
+    industry_density: float = param(1.0, gt=0)
+    """Multiplies plan.production_per_type, plan.max_per_type and the number of areas per resource (rounded, at least
+    1 each)."""
+    all_cargos: bool = False
+    """Resources without a fitting area get areas anyway, regardless of land cover and height (unrealistic; fish
+    excluded); processing industries whose inputs have no source on the map are placed anyway."""
 
 
 # --- data -----------------------------------------------------------------------------------------------------------
@@ -350,11 +364,17 @@ class SiteMaps:
            codec=JsonDocumentCodec(lambda data: IndustryRules(data)), preview=lambda r: ", ".join(sorted(r.data)))
 @dataclass(frozen=True)
 class IndustryRules(JsonDocument):
-    """{industry: [inputs, outputs, cycle duration]}."""
+    """{industry: [inputs, outputs, cycle duration, alternative inputs]}; alternative inputs (optional) = the inputs of
+    further rules with the same outputs (food factory: fish or meat)."""
 
     def rule(self, name: str) -> Rule:
-        ins, outs, duration = self.data[name]
+        ins, outs, duration = self.data[name][:3]
         return dict(ins), dict(outs), float(duration)
+
+    def input_choices(self, name: str) -> list[dict[str, float]]:
+        """The inputs of the first rule, then the alternatives."""
+        entry = self.data[name]
+        return [dict(ins) for ins in [entry[0], *(entry[3] if len(entry) > 3 else [])]]
 
 
 @data_type("industry_list", "Planned industries: [{name, type, x, y, fileName, onWater, site}], game metres.",
@@ -369,30 +389,37 @@ class IndustryList(JsonDocument):
 
 @node("game.industry_rules", output="rules")
 def industry_rules(context: NodeContext) -> IndustryRules:
-    """The first (non-booster) production rule of every industry of the game (base/content/industries/*.zip)."""
+    """The first (non-booster) production rule of every industry of the game (base/content/industries/*.zip) and the
+    inputs of alternative rules with the same outputs."""
     files = GameFiles.at(context.game_folder())
     rules: dict[str, Any] = {}
     for name in files.packages("industries"):
         try:
-            ins, outs, duration = _read_rule(files.text(f"industries/{name}/{name}.con.lua"))
+            (ins, outs, duration), alternatives = _read_rule(files.text(f"industries/{name}/{name}.con.lua"))
         except (FileNotFoundError, ValueError, AssertionError):
             continue                                   # shared files, platforms without a construction script
-        rules[name] = [ins, outs, duration]
+        rules[name] = [ins, outs, duration, alternatives]
     context.log(f"{len(rules)} industries of the game read")
     return IndustryRules(rules)
 
 
-def _read_rule(c: str) -> Rule:
+def _read_rule(c: str) -> tuple[Rule, list[dict[str, float]]]:
+    """The first rule and the inputs of the further rules with the same outputs."""
     blk = c[c.index("local stockListConfig"):c.index("industrialCapacity")]
     stocks = re.findall(r'type = "(INPUT|OUTPUT)_STOCK",\s*cargoType = "::/cargos/(\w+)/', blk)
-    first = re.split(r"\n\t\t\t\},\s*\{", blk[blk.index("rules = {"):])[0]
-    inp = re.search(r"input = \{\s*\{([^}]*)\}", first)
-    amounts = [float(v) for v in inp.group(1).split(",") if v.strip()] if inp else []
-    ins = {g: a for g, a in zip([g for t, g in stocks if t == "INPUT"], amounts, strict=False) if a > 0}
-    outs = {g: float(v) for g, v in re.findall(r'cargos/(\w+)/\w+\.cargo"\]\s*=\s*([\d.]+)', first)}
-    capacity = re.search(r"capacity = ([\d.]+)", first)
-    assert capacity is not None
-    return ins, outs, float(capacity.group(1))
+    input_names = [g for t, g in stocks if t == "INPUT"]
+
+    def parse(block: str) -> Rule:
+        inp = re.search(r"input = \{\s*\{([^}]*)\}", block)
+        amounts = [float(v) for v in inp.group(1).split(",") if v.strip()] if inp else []
+        ins = {g: a for g, a in zip(input_names, amounts, strict=False) if a > 0}
+        outs = {g: float(v) for g, v in re.findall(r'cargos/(\w+)/\w+\.cargo"\]\s*=\s*([\d.]+)', block)}
+        capacity = re.search(r"capacity = ([\d.]+)", block)
+        assert capacity is not None
+        return ins, outs, float(capacity.group(1))
+
+    first, *rest = [parse(b) for b in re.split(r"\n\t\t\t\},\s*\{", blk[blk.index("rules = {"):])]
+    return first, [ins for ins, outs, _ in rest if ins and outs == first[1] and ins != first[0]]
 
 
 # --- sites and resource areas ------------------------------------------------------------------------------------
@@ -437,13 +464,14 @@ def resource_areas(heights: Field, heightmap: Image, black_m: float, map_format:
     layers = {key: work(mask.values.astype(np.float32)) for key, mask in
               (("forest", forest), ("meadow", meadow), ("cropland", cropland), ("rock", rock), ("glacier", glacier),
                ("water", water), ("shore", shore), ("mountains", mountains))}
-    grid = WorkGrid(cell, real_h, (real_h - black_m) * map_format.game_per_real,
+    grid = WorkGrid(cell, real_h, (real_h - black_m) * map_format.height_game_per_real,
                     work((heightmap.pixels == 0).astype(np.float32)) > 0.5, layers,
                     _town_spots(towns, px_w, px_h, sp.work_px))
     context.log(f"map {px_w} x {px_h} px, work grid {w} x {h} ({cell:g} m), {len(grid.towns)} towns")
     dist_town = grid.dist_town()
     sites = _SiteFinder(sp, context.log).find(grid, dist_town)
-    maps = _ResourceAreaFinder(sp, context.log).find(grid, sites, dist_town)
+    maps = _ResourceAreaFinder(sp, params.industry_density, params.all_cargos, context.log).find(grid, sites,
+                                                                                                  dist_town)
     previews = _Previews(grid, settings.preview_width)
     return Areas(grid, maps, Image(np.asarray(previews.resources(sp.resources, maps.regions))),
                  Image(np.asarray(previews.sites(sp.sites, maps.sites))))
@@ -487,8 +515,10 @@ class _SiteFinder:
 class _ResourceAreaFinder:
     """Suitability per resource and the resource areas around the best places."""
 
-    def __init__(self, params: SiteParams, log: Log) -> None:
+    def __init__(self, params: SiteParams, density: float, all_cargos: bool, log: Log) -> None:
         self._p = params
+        self._density = density
+        self._all_cargos = all_cargos
         self._log = log
 
     def find(self, grid: WorkGrid, sites: dict[str, BoolMap], dist_town: NDArray[Any]) -> SiteMaps:
@@ -499,18 +529,34 @@ class _ResourceAreaFinder:
         yy, xx = np.mgrid[0:h, 0:w]
         score, regions = {}, {}
         for key, spec in p.resources.items():
-            s = suit.of(key).astype(np.float32)
-            if key != "fish":
-                s *= suit.dry
-                noise = gaussian_filter(rng.standard_normal((h, w)).astype(np.float32),
-                                        p.noise_game_m / grid.cell_m / 2)
-                noise = (noise - noise.min()) / max(float(np.ptp(noise)), 1e-6)
-                s *= 1 - p.noise + p.noise * noise
-                share = np.max([suit.site_share[n] for n in spec.sites], axis=0)
-                s *= ramp(share, 0, p.site_full_share)
+            if spec.regions > 0:
+                spec = spec.model_copy(update={"regions": max(1, round(spec.regions * self._density))})
+            s = suit.of(key, spec.height_m).astype(np.float32)
+            if key == "fish":
+                score[key] = s
+                regions[key] = self._regions(key, spec, s, grid, yy, xx)
+                continue
+            noise, share = self._site_factors(spec, suit, rng, grid)
+            s *= suit.dry
+            s *= noise
+            s *= share
             score[key] = s
             regions[key] = self._regions(key, spec, s, grid, yy, xx)
+            if self._all_cargos and spec.regions > 0 and not regions[key].any():
+                score[key] = (suit.dry * noise * share).astype(np.float32)
+                regions[key] = self._regions(key, spec, score[key], grid, yy, xx)
+                self._log(f"  {spec.label} no fitting area: {int(regions[key].max())} areas without regard to land "
+                          "cover and height (all_cargos, unrealistic)")
         return SiteMaps(sites, score, regions)
+
+    def _site_factors(self, spec: ResourceSpec, suit: _Suitability, rng: np.random.Generator,
+                      grid: WorkGrid) -> tuple[FloatMap, FloatMap]:
+        """Noise factor (a new noise field per call) and the factor of the share of building sites nearby."""
+        p = self._p
+        noise = gaussian_filter(rng.standard_normal(grid.shape).astype(np.float32), p.noise_game_m / grid.cell_m / 2)
+        noise = (noise - noise.min()) / max(float(np.ptp(noise)), 1e-6)
+        share = np.max([suit.site_share[n] for n in spec.sites], axis=0)
+        return 1 - p.noise + p.noise * noise, ramp(share, 0, p.site_full_share)
 
     def _regions(self, key: str, spec: ResourceSpec, s: FloatMap, grid: WorkGrid, yy: NDArray[Any],
                  xx: NDArray[Any]) -> NDArray[np.uint8]:
@@ -564,30 +610,31 @@ class _Suitability:
         result: FloatMap = gaussian_filter(a.astype(np.float32), radius / self._grid.cell_m / 2)
         return result
 
-    def of(self, key: str) -> Any:
-        """Suitability map 0..1 (numpy array)."""
-        real_h, slope = self._grid.real_h, self.slope
+    def of(self, key: str, height_m: tuple[float, float, float, float]) -> Any:
+        """Suitability map 0..1 (numpy array); `height_m` = real height band (unused by fish)."""
+        slope = self.slope
+        height = band(self._grid.real_h, *height_m)
         if key == "farm":
-            return self.crop_l * self.flat * band(real_h, 0, 0, 750, 1100)
+            return self.crop_l * self.flat * height
         if key == "livestock":
-            return self.meadow_l * ramp(slope, 0.3, 0.08) * band(real_h, 450, 550, 1400, 1800) * (1 - 0.5 * self.crop_l)
+            return self.meadow_l * ramp(slope, 0.3, 0.08) * height * (1 - 0.5 * self.crop_l)
         if key == "forest":
-            return self.local(self._grid.layers["forest"], 800) * band(real_h, 0, 0, 1500, 1900)
+            return self.local(self._grid.layers["forest"], 800) * height
         if key == "plantation":
-            return np.minimum(self.forest_l, self.open_land) * 2 * self.flat * band(real_h, 0, 0, 700, 900)
+            return np.minimum(self.forest_l, self.open_land) * 2 * self.flat * height
         if key == "coal":
-            return ((self.forest_l + self.meadow_l) * band(real_h, 550, 650, 1100, 1300) * (1 - self.mount_l)
+            return ((self.forest_l + self.meadow_l) * height * (1 - self.mount_l)
                     * ramp(slope, 0.4, 0.1))
         if key == "iron_ore":                  # mountains, remote
-            return self.mount_l * band(real_h, 800, 1000, 1800, 2200) * ramp(self.dist_town, 2000, 6000)
+            return self.mount_l * height * ramp(self.dist_town, 2000, 6000)
         if key == "stone":
-            return self.rock_l * band(real_h, 500, 700, 1600, 2000)
+            return self.rock_l * height
         if key == "clay":
-            return self.open_land * self.flat * band(real_h, 0, 0, 750, 950) * ramp(self.dist_water, 4000, 500)
+            return self.open_land * self.flat * height * ramp(self.dist_water, 4000, 500)
         if key == "sand":
-            return self.flat * band(real_h, 0, 0, 1000, 1300) * ramp(self.dist_water, 1500, 200)
+            return self.flat * height * ramp(self.dist_water, 1500, 200)
         if key == "oil":                       # lowland in the north, far from the mountains
-            return self.flat * band(real_h, 0, 0, 700, 850) * ramp(self.dist_mount, 4000, 12000) * self.open_land
+            return self.flat * height * ramp(self.dist_mount, 4000, 12000) * self.open_land
         if key == "fish":
             return self.local(self._grid.real_water, 400)
         raise KeyError(key)
@@ -692,7 +739,8 @@ def plan(grid: WorkGrid, maps: SiteMaps, rules: IndustryRules, places: OsmPoints
     sp, pp = settings.sites, settings.plan
     towns = [copy.deepcopy(t) for t in grid.towns]     # the planner fills in classes and demand
     planner = _IndustryPlanner(pp, sp.resources, rules, grid, maps, sp.sites["factory"].radius_game_m,
-                               sp.town_clear_game_m, grid.dist_town(), context.log)
+                               sp.town_clear_game_m, grid.dist_town(), params.ignore_town_size, params.industry_density,
+                               params.all_cargos, context.log)
     planned = planner.plan(towns)
     width_px, height_px = frame.width_px, frame.height_px
     namer = _Namer(settings.naming, width_px, height_px, sp.work_px, context.log)
@@ -775,8 +823,11 @@ class _IndustryPlanner:
 
     def __init__(self, params: PlanParams, resources: Mapping[str, ResourceSpec], rules: IndustryRules,
                  grid: WorkGrid, maps: SiteMaps, factory_radius_game_m: float, town_clear_game_m: float,
-                 dist_town: NDArray[Any], log: Log) -> None:
+                 dist_town: NDArray[Any], equal_towns: bool, density: float, all_cargos: bool, log: Log) -> None:
         self._p = params
+        self._equal_towns = equal_towns
+        self._density = density
+        self._all_cargos = all_cargos
         self._resources = resources
         self._grid = grid
         self._maps = maps
@@ -784,6 +835,7 @@ class _IndustryPlanner:
         self._log = log
         names = sorted(set(params.raw_resource) | set(params.intermediate) | set(params.complex))
         self.rules = {n: rules.rule(n) for n in names}
+        self._input_choices = {n: rules.input_choices(n) for n in names}
         self.producer: dict[str, str] = {}
         for n in names:
             for g in self.rules[n][1]:
@@ -808,13 +860,20 @@ class _IndustryPlanner:
         return ins[g] / dur
 
     def _raw_materials(self) -> None:
-        """One industry per area (agriculture all areas, else at most max_per_type)."""
+        """One industry per area (agriculture all areas, else at most max_per_type x density); none whose outputs no
+        planned industry and no town uses (temperate standard: stone only feeds the cement plant of the mod)."""
         p, placer, maps, grid = self._p, self.placer, self._maps, self._grid
         cell = grid.cell_m
+        used = {g for choices in self._input_choices.values() for ins in choices for g in ins} | set(p.town_cargos)
+        unused = [n for n in p.raw_resource if not set(self.rules[n][1]) & used]
+        if unused:
+            self._log("  output used by nothing on the map, not placed: " + ", ".join(unused))
         for n, key in p.raw_resource.items():
+            if n in unused:
+                continue
             reg = maps.regions[key]
             nreg = int(reg.max())
-            total = nreg if n in p.agriculture else min(nreg, p.max_per_type)
+            total = nreg if n in p.agriculture else min(nreg, self._scaled(p.max_per_type))
             if total == 0:
                 continue
             area = np.bincount(reg.ravel(), minlength=nreg + 1)[1:].astype(float)
@@ -841,6 +900,10 @@ class _IndustryPlanner:
         self._log("raw materials: " + ", ".join(f"{n} {sum(q.name == n for q in placer.placed)}"
                                                 for n in p.raw_resource))
 
+    def _scaled(self, count: int) -> int:
+        """`count` x industry density, rounded, at least 1."""
+        return max(1, round(count * self._density))
+
     def _sources(self, g: str) -> list[tuple[int, int]]:
         """Cells where cargo g is produced (placed industries)."""
         return [(q.i, q.j) for q in self.placer.placed if q.name in self.rules and g in self.rules[q.name][1]]
@@ -856,17 +919,29 @@ class _IndustryPlanner:
         """Medium towns intermediate products, large towns complex products (factory near the town)."""
         p, placer, maps = self._p, self.placer, self._maps
         for t in towns:
-            t.cls = ("large" if t.capacity >= p.large_town_capacity
-                     else "medium" if t.capacity >= p.medium_town_capacity else "village")
-            t.slots = p.specializations[t.cls]
+            if self._equal_towns:
+                t.cls, t.slots = "medium", p.equal_town_slots
+            else:
+                t.cls = ("large" if t.capacity >= p.large_town_capacity
+                         else "medium" if t.capacity >= p.medium_town_capacity else "village")
+                t.slots = p.specializations[t.cls]
             t.produces, t.industries = set(), []
         depth = dict.fromkeys(p.raw_resource, 0)
         for _ in range(10):                            # processing level = 1 + deepest level of the inputs
             for n in [*p.intermediate, *p.complex]:
                 depth[n] = 1 + max((depth.get(self.producer.get(g, ""), 0) for g in self.rules[n][0]), default=0)
+        skip_unsupplied = not self._all_cargos and p.trade_points == 0
+        unsupplied = []
         for n in sorted([*p.intermediate, *p.complex], key=lambda n: (depth[n], n)):
+            supplied = [ins for ins in self._input_choices[n] if all(self._sources(g) for g in ins)]
+            if supplied:                               # the first rule whose inputs all have a source on the map
+                _, outs, duration = self.rules[n]
+                self.rules[n] = supplied[0], outs, duration
+            elif skip_unsupplied:
+                unsupplied.append(n)                   # upstream first: a skipped type starves its customers too
+                continue
             want = ["medium", "large"] if n in p.intermediate else ["large", "medium"]
-            for _ in range(p.production_per_type.get(n, 1)):
+            for _ in range(self._scaled(p.production_per_type.get(n, 1))):
                 cand: list[TownSpot] = []
                 for c in want:                         # preferred size class, else the other
                     cand = [t for t in towns if t.cls == c and t.slots > 0 and n not in t.industries]
@@ -884,6 +959,8 @@ class _IndustryPlanner:
                     t.slots -= 1
                     t.industries.append(n)
                     t.produces |= set(self.rules[n][1])
+        if unsupplied:
+            self._log("  no source for the inputs, not placed: " + ", ".join(unsupplied))
 
     def _trade_points(self) -> None:
         """Foreign trade at the map edge: low places (valley exits), spread out."""
@@ -910,7 +987,7 @@ class _IndustryPlanner:
             ti, tj = t.cell(*self._grid.shape)
             t.needs = {}
             far_use = None
-            if t.capacity >= p.far_min_capacity:       # larger towns: one long-distance cargo, com/ind alternating
+            if self._equal_towns or t.capacity >= p.far_min_capacity:   # one long-distance cargo, com/ind in turns
                 far_use = "com" if k % 2 == 0 else "ind"
 
             def dist_g(g: str, ti: int = ti, tj: int = tj) -> float:

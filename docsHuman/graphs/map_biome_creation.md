@@ -11,6 +11,8 @@ flowchart LR
   n_mountains_png[["mountains_png<br/><small>graph:mask_png</small>"]]
   n_path_gaps["path_gaps<br/><small>lines.strip</small>"]
   n_road_gaps["road_gaps<br/><small>lines.strip</small>"]
+  n_no_forest["no_forest<br/><small>mask.invert</small>"]
+  n_forest_edge["forest_edge<br/><small>mask.near</small>"]
   n_forest["forest<br/><small>mask.subtract</small>"]
   n_forest_png[["forest_png<br/><small>graph:mask_png</small>"]]
   n_meadow_png[["meadow_png<br/><small>graph:mask_png</small>"]]
@@ -38,6 +40,9 @@ flowchart LR
   n_inputs -- "forest -> mask" --> n_forest
   n_path_gaps -- "mask -> minus" --> n_forest
   n_road_gaps -- "mask -> minus" --> n_forest
+  n_inputs -- "forest -> mask" --> n_no_forest
+  n_no_forest -- "mask" --> n_forest_edge
+  n_forest_edge -- "mask -> minus" --> n_forest
   n_forest -- "mask" --> n_forest_png
   n_inputs -- "meadow -> mask" --> n_meadow_png
   n_inputs -- "cropland -> mask" --> n_cropland_png

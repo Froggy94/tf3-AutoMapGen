@@ -53,12 +53,14 @@ class ImportTreeBuilder:
 
     ORIGIN = (-0.33, -0.18)
 
-    def __init__(self, tree: NodeTree, adapter: ClimateAdapter, landscape: Landscape, game: GameHeights) -> None:
+    def __init__(self, tree: NodeTree, adapter: ClimateAdapter, landscape: Landscape, game: GameHeights,
+                 distance_game_per_real: float) -> None:
         self._tree = tree
         self._adapter = adapter
         self._landscape = landscape
         self._preset = landscape.primary
         self._game = game
+        self._distance_game_per_real = distance_game_per_real
         self._f = NodeFactory(tree, self.ORIGIN)
         self._seed = Port(self._f.data("data").node, "seed")
         self._layers = LandcoverLayers(self._f, self._preset, self._derived_layers())
@@ -70,7 +72,7 @@ class ImportTreeBuilder:
         if transition is None:
             return {}
         ramp = ZoneRamp(self._f, self._preset.top)
-        length = transition.zone.real_length_m * self._game.game_per_real
+        length = transition.zone.real_length_m * self._distance_game_per_real
         return {transition.layer.key: lambda layer: ramp.build("transition ramp", layer, length)}
 
     def build(self) -> None:

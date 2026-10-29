@@ -70,17 +70,25 @@ def test_mod_folder_replaces_an_older_one(tmp_path: Path) -> None:
 
 
 def test_climate_naming() -> None:
-    naming = climate.ClimateNaming("DHE", "Alpine Realistic", "BETA", 540.4, 2.5)
+    naming = climate.ClimateNaming("DHE", "Alpine Realistic", "BETA", 540.4, 2.5, height_scale=2.5)
 
     assert naming.label == "DHE Alpine Realistic 540m Scale 0.4 BETA"
     assert naming.mod_id == "DHE-Alpine-Realistic-540m-Scale-0_4-BETA"
     assert naming.stamp == "540m\n0.4"
-    assert climate.ClimateNaming("DHE", "X", "", 0, 1.5).label == "DHE X 0m Scale 0.667"
+    assert climate.ClimateNaming("DHE", "X", "", 0, 1.5, height_scale=1.5).label == "DHE X 0m Scale 0.667"
+
+
+def test_climate_naming_with_height_scale() -> None:
+    naming = climate.ClimateNaming("DHE", "Alpine Realistic", "BETA", 0, 2, height_scale=1)
+
+    assert naming.label == "DHE Alpine Realistic 0m Scale 0.5 Heights 1 BETA"
+    assert naming.mod_id == "DHE-Alpine-Realistic-0m-Scale-0_5-Heights-1-BETA"
+    assert naming.stamp == "0m\n0.5\n1"
 
 
 def test_climate_identity_and_texts() -> None:
     params = climate.ModTextParams(climate=CLIMATE, publishing=PUBLISHING, climate_texts=TEXTS)
-    fmt = MapFormat(3.072, 3.072, 2)
+    fmt = MapFormat(3.072, 3.072, 2, 2)
 
     identity = climate.identity(540.0, fmt, params)
     texts = climate.mod_texts(540.0, fmt, params)

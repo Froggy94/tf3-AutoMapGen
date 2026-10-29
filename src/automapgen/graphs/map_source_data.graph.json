@@ -54,6 +54,12 @@
       ],
       "description": "scale 1:scale"
     },
+    "height_scale": {
+      "to": [
+        "format.height_scale"
+      ],
+      "description": "heights 1:height_scale; empty = like the distances"
+    },
     "rotation_deg": {
       "to": [
         "on_map.rotation_deg",

@@ -7,6 +7,7 @@
     "landcover": "classes",
     "rivers": "river_plan",
     "land_min_m": "number",
+    "map_format": "map_format",
     "farmland": "osm_areas"
   },
   "outputs": {
@@ -21,6 +22,7 @@
     "water": "mask",
     "shore": "mask",
     "riverbed": "mask",
+    "real": "mask",
     "crop_type": "classes",
     "crops_preview": "image",
     "planning_landcover": "classes"
@@ -60,6 +62,7 @@
     ["inputs.heights", "water.heights"],
     ["inputs.landcover", "water.landcover"],
     ["inputs.land_min_m", "water.land_min_m"],
+    ["inputs.map_format", "water.map_format"],
     ["inputs.rivers", "water.rivers"],
     ["water.core", "water_layers.core"],
     ["water.border", "water_layers.border"],
@@ -109,6 +112,7 @@
     ["water_texture.mask", "outputs.water"],
     ["shore_texture.mask", "outputs.shore"],
     ["riverbed.bed", "outputs.riverbed"],
+    ["water.real", "outputs.real"],
     ["fields.crop_type", "outputs.crop_type"],
     ["fields.crop_type", "crops_preview.crop_type"],
     ["fields.groups", "crops_preview.groups"],

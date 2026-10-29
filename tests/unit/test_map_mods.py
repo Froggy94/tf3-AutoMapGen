@@ -22,7 +22,7 @@ from automapgen.nodes.towns import TownList
 PRESET = ParameterSet.load(Path(__file__).resolve().parents[2] / "configs" / "presets" / "alpine_realistic.toml")
 PUBLISHING = PublishingSettings.model_validate(PRESET.defaults["publishing"])
 TEXTS = {kind: info.MapModText.model_validate(t) for kind, t in PRESET.defaults["map_mod_texts"].items()}
-FORMAT = MapFormat(2.048, 1.024, 2)                     # 2048 x 1024 game metres
+FORMAT = MapFormat(2.048, 1.024, 2, 2)                     # 2048 x 1024 game metres
 LOG: list[str] = []
 CONTEXT = NodeContext("mod", LOG.append, lambda f: None, lambda: False)
 

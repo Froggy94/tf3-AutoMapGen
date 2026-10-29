@@ -37,6 +37,25 @@
       ],
       "description": "at most this many towns (0 = from the map area)"
     },
+    "ignore_town_size": {
+      "to": [
+        "towns.ignore_town_size",
+        "industries.ignore_town_size"
+      ],
+      "description": "ignore the real town size: all towns start at the minimum and count as equal (industries, roads)"
+    },
+    "industry_density": {
+      "to": [
+        "industries.industry_density"
+      ],
+      "description": "industry density: factories per type, raw-material industries and resource areas x this factor"
+    },
+    "all_cargos": {
+      "to": [
+        "industries.all_cargos"
+      ],
+      "description": "all cargos: resources without fitting land get areas anyway (unrealistic); factories without input source are placed anyway"
+    },
     "town_min_distance_game_m": {
       "to": [
         "towns.town_min_distance_game_m"

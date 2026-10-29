@@ -18,7 +18,7 @@ CONTEXT = NodeContext("test", LOG.append, lambda f: None, lambda: False)
 # 201 x 201 px = 800 x 800 game m at scale 1:1 over a small square near 47° N
 FRAME = MapFrame(201, 201, SourceBounds(11.0, 47.0, 11.0106, 47.0072, True), Rotation.NORTH,
                  CRS.from_epsg(4326).to_wkt())
-FORMAT = MapFormat(0.8, 0.8, 1)
+FORMAT = MapFormat(0.8, 0.8, 1, 1)
 EMPTY = Mask(np.zeros((201, 201), dtype=bool), FRAME)
 FLAT = Field(np.full((201, 201), 600, dtype=np.float32), FRAME)
 
@@ -44,6 +44,17 @@ def test_towns_largest_first_at_a_distance() -> None:
     assert result.towns.data[0]["capacity"] > result.towns.data[1]["capacity"]
     assert 'name = "Big"' in result.lua.text
     assert result.lua.text.startswith("function data()")
+
+
+def test_ignore_size_starts_all_at_the_minimum_and_keeps_the_choice() -> None:
+    places = OsmPoints((_place("Small", 0.2, 0.2, 400), _place("Big", 0.5, 0.5, 90000),
+                        _place("Near", 0.55, 0.5, 5000), _place("Third", 0.8, 0.8, 300)))
+
+    normal = _plan(places, max_towns=2, min_distance_game_m=300)
+    equal = _plan(places, max_towns=2, min_distance_game_m=300, ignore_size=True, min_start_capacity=45)
+
+    assert [t["name"] for t in equal.towns.data] == [t["name"] for t in normal.towns.data] == ["Big", "Small"]
+    assert [t["capacity"] for t in equal.towns.data] == [45, 45]
 
 
 def test_towns_avoid_water() -> None:

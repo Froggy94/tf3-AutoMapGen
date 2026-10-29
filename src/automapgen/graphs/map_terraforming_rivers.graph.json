@@ -21,6 +21,18 @@
         "rivers.real_water_until_m"
       ],
       "description": "real (game) water only up to this height a.s.l.; above painted water"
+    },
+    "real_water_rivers": {
+      "to": [
+        "rivers.real_water_rivers"
+      ],
+      "description": "which waterways may be real water: all (below the limit) or only navigable ones (CEMT class, navigable_names, unnamed canals attached to them)"
+    },
+    "navigable_names": {
+      "to": [
+        "rivers.navigable_names"
+      ],
+      "description": "waterways whose name starts with one of these count as navigable (case-insensitive)"
     }
   },
   "nodes": {

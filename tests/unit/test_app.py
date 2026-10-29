@@ -152,3 +152,7 @@ def test_import_summary_raises_the_minimum_height_so_the_water_is_not_too_high(t
     assert MIN_HEIGHT_RAISE_GAME_M == 3
     assert summary["min_game"] == pytest.approx(-17)
     assert summary["max_game"] == pytest.approx((2787.0 - 549.2) / 2)
+
+    real = ImportSummary(tmp_path).build(ParameterSet(params={"map_name": "Map", "scale": 2, "height_scale": 1}))
+    assert real["min_game"] == pytest.approx(509.2 - 549.2 + 3)
+    assert real["max_game"] == pytest.approx(2787.0 - 549.2)

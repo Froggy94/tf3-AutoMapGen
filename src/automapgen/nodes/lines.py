@@ -646,9 +646,9 @@ def road_terrain(heights: Field, roads: RoadLines, keep_free: Mask, map_format: 
                  context: NodeContext) -> RoadTerrain:
     """Terrain under the country roads: level across, profile smoothed and grade-limited, cut/fill with banks (width =
     change / bank slope); `keep_free` (water and its border) stays as it is. `core` = pixels at full weight."""
-    p, scale, px = params, map_format.game_per_real, GAME_METERS_PER_PIXEL
+    p, scale, px = params, map_format.height_game_per_real, GAME_METERS_PER_PIXEL
     dem = heights.values
-    px_real_m = px / scale                     # real metres per heightmap pixel
+    px_real_m = px / scale                     # real height metres of a game grade of 1 over one heightmap pixel
     sink_m, max_change_m = p.sink_game_m / scale, p.max_change_game_m / scale
     stamp = LineStamp(dem)
     samples = _Samples([], [], [], [], [])
@@ -694,7 +694,7 @@ def path_terrain(heights: Field, paths: PathPlan, keep_free: Mask, road_core: Ma
                  params: PathTerrainParams, context: NodeContext) -> Field:
     """Terrain under the paths: level across (terrace on slopes, slight hollow), smooth transition to the side; water
     and its border (`keep_free`) and the country roads (`road_core`) stay as they are."""
-    p, scale, px = params, map_format.game_per_real, GAME_METERS_PER_PIXEL
+    p, scale, px = params, map_format.height_game_per_real, GAME_METERS_PER_PIXEL
     dem = heights.values
     sink_m, max_change_m = p.sink_game_m / scale, p.max_change_game_m / scale
     stamp = LineStamp(dem)

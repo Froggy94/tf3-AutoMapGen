@@ -46,6 +46,30 @@
       ],
       "description": "core of real water this much below the lowest land"
     },
+    "real_water_rivers": {
+      "to": [
+        "rivers_and_water.real_water_rivers"
+      ],
+      "description": "which waterways may be real water: all (below the limit) or only navigable ones (CEMT class, navigable_names, unnamed canals attached to them)"
+    },
+    "navigable_names": {
+      "to": [
+        "rivers_and_water.navigable_names"
+      ],
+      "description": "waterways whose name starts with one of these count as navigable (case-insensitive)"
+    },
+    "ramp_length_game_m": {
+      "to": [
+        "draft_terrain.ramp_length_game_m"
+      ],
+      "description": "ramp of the painted riverbed down to real water over this length (game m); 0 = no ramp"
+    },
+    "ramp_corridor_game_m": {
+      "to": [
+        "draft_terrain.ramp_corridor_game_m"
+      ],
+      "description": "the terrain beside the ramp follows it this far on each side (game m)"
+    },
     "real_water_until_m": {
       "to": [
         "rivers_and_water.real_water_until_m",

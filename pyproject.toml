@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tf3-automapgen"
-version = "0.1.0"
+version = "0.1.1"
 description = "tf3-Auto-map-generator-framework: a node-based generator for realistic Transport Fever 3 maps from real geodata."
 readme = "README.md"
 license = "Apache-2.0"

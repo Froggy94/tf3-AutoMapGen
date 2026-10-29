@@ -74,8 +74,8 @@ nodes = ["*preview*", "*_json", "*/rivers_profiles_png", "*/roads_plan_*", "*/wo
 [advanced]
 # exposed parameters of the graph edited on the main page (not listed)
 main_page = ["map_name", "crop", "dem_path", "dem_download", "game_width_km", "game_height_km", "scale",
-             "rotation_deg", "min_height_m", "water_sink_m", "real_water_until_m", "max_towns",
-             "town_min_distance_game_m", "climate_reference_step_m"]
+             "height_scale", "rotation_deg", "min_height_m", "water_sink_m", "real_water_until_m", "max_towns",
+             "ignore_town_size", "town_min_distance_game_m", "climate_reference_step_m"]
 # node parameters not listed ("<node type>.<parameter>" patterns): file names and destinations, preview pictures
 hidden = ["file.*", "image.*", "*preview*", "mod.map_info.kind"]
 other = { key = "other", label = "Other" }

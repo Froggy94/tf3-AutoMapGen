@@ -38,6 +38,12 @@
       ],
       "description": "scale 1:scale"
     },
+    "height_scale": {
+      "to": [
+        "source_data.height_scale"
+      ],
+      "description": "heights 1:height_scale; empty = like the distances"
+    },
     "rotation_deg": {
       "to": [
         "source_data.rotation_deg"
@@ -62,6 +68,32 @@
       ],
       "description": "white of the heightmap; empty = highest point"
     },
+    "real_water_rivers": {
+      "to": [
+        "terraforming.real_water_rivers"
+      ],
+      "description": "which waterways may be real water: all (below the limit) or only navigable ones (CEMT class, navigable_names, unnamed canals attached to them)"
+    },
+    "navigable_names": {
+      "to": [
+        "terraforming.navigable_names"
+      ],
+      "description": "waterways whose name starts with one of these count as navigable (case-insensitive)"
+    },
+    "ramp_length_game_m": {
+      "to": [
+        "terraforming.ramp_length_game_m",
+        "final_terrain.ramp_length_game_m"
+      ],
+      "description": "ramp of the painted riverbed down to real water over this length (game m); 0 = no ramp"
+    },
+    "ramp_corridor_game_m": {
+      "to": [
+        "terraforming.ramp_corridor_game_m",
+        "final_terrain.ramp_corridor_game_m"
+      ],
+      "description": "the terrain beside the ramp follows it this far on each side (game m)"
+    },
     "real_water_until_m": {
       "to": [
         "terraforming.real_water_until_m",
@@ -81,6 +113,24 @@
       ],
       "description": "at most this many towns (0 = from the map area)"
     },
+    "ignore_town_size": {
+      "to": [
+        "planning.ignore_town_size"
+      ],
+      "description": "ignore the real town size: all towns start at the minimum and count as equal (industries, roads)"
+    },
+    "industry_density": {
+      "to": [
+        "planning.industry_density"
+      ],
+      "description": "industry density: factories per type, raw-material industries and resource areas x this factor"
+    },
+    "all_cargos": {
+      "to": [
+        "planning.all_cargos"
+      ],
+      "description": "all cargos: resources without fitting land get areas anyway (unrealistic); factories without input source are placed anyway"
+    },
     "town_min_distance_game_m": {
       "to": [
         "planning.town_min_distance_game_m"
@@ -98,6 +148,12 @@
         "biome_creation.road_forest_gap_game_m"
       ],
       "description": "gap in the forest along roads"
+    },
+    "forest_shrink_px": {
+      "to": [
+        "biome_creation.forest_shrink_px"
+      ],
+      "description": "shrink the forest along its edge (1 px = 4 game m; 0 = off) against the game's coarse layer reading"
     },
     "biome_limits_m": {
       "to": [

@@ -34,13 +34,28 @@ def field(values: NDArray[np.float64] | list[list[float]]) -> Field:
 
 
 def test_map_format_and_frame() -> None:
-    fmt = map_format(MapFormatParams(game_width_km=3.072, game_height_km=3.072, scale=2))
+    fmt = map_format(MapFormatParams(game_width_km=3.072, game_height_km=3.072, scale=2), CONTEXT)
     frame = MapFrame(769, 769, SourceBounds(11.0, 47.0, 11.1, 47.05, True), Rotation.EAST, "")
 
     assert (fmt.width_px, fmt.height_px, fmt.game_per_real) == (769, 769, 0.5)
     assert frame.extent_km[0] == pytest.approx(5.53, abs=0.01)   # sideways: map width = north-south extent
     assert frame.work_grid(4) == (193, 193)
     assert MapFrame.from_json(frame.to_json()) == frame
+
+
+def test_height_scale_defaults_to_scale_and_logs_steeper_slopes() -> None:
+    LOG.clear()
+    same = map_format(MapFormatParams(scale=2), CONTEXT)
+    assert (same.height_scale, same.height_game_per_real) == (2, 0.5)
+    assert LOG == []
+
+    real = map_format(MapFormatParams(scale=2, height_scale=1), CONTEXT)
+    assert (real.game_per_real, real.height_game_per_real) == (0.5, 1.0)
+    assert LOG == ["heights 1:1, distances 1:2 - slopes x2 in game (more bridges and tunnels, less building land for "
+                   "towns)"]
+    assert map_format(MapFormatParams(scale=2, height_scale=0.5), CONTEXT).height_game_per_real == 2
+    assert MapFormat.from_json(real.to_json()) == real
+    assert MapFormat.from_json({"game_width_km": 1, "game_height_km": 1, "scale": 2}).height_scale == 2
 
 
 def test_rasters_are_read_only_and_survive_the_codec(tmp_path: Path) -> None:
@@ -133,7 +148,7 @@ def geotiff(tmp_path: Path) -> Path:
 
 def test_elevation_nodes(geotiff: Path) -> None:
     source = elevation.read(elevation.ReadParams(path=str(geotiff)), CONTEXT)
-    on_map = elevation.to_map(source, MapFormat(0.04, 0.024, 2), elevation.ToMapParams(rotation_deg=90), CONTEXT)
+    on_map = elevation.to_map(source, MapFormat(0.04, 0.024, 2, 2), elevation.ToMapParams(rotation_deg=90), CONTEXT)
     refs = elevation.references(on_map.heights, elevation.ReferenceParams(min_height_m=None, water_sink_m=40),
                                 CONTEXT)
     encoded = elevation.encode(on_map.heights, refs.black_m, elevation.EncodeParams(bit_depth=8))
@@ -206,3 +221,48 @@ def test_project_parameter_set_extends_the_preset() -> None:
     assert project.defaults["biome_limits_m"] == [1000, 1500, 1800]
     assert project.defaults["crops"]["osm_tags"]["maize"] == "corn"
     assert project.given_for(["forest_classes", "scale"]) == {**project.params, "forest_classes": [10]}
+
+
+def test_lowland_preset_sets_waterways_ramps_and_forest_shrink() -> None:
+    configs = Path(__file__).resolve().parents[2] / "configs"
+    library = FolderLibrary([GRAPHS_DIR])
+    compiler = GraphCompiler(NodeCatalog.from_modules(BUILTIN_MODULES), library)
+    project = ParameterSet.load(configs / "projects" / "golden_test.toml")
+    lowland = ParameterSet.load(configs / "presets" / "lowland_realistic.toml")
+    document = library.get("map")
+    assert document is not None
+
+    parameters = ParameterSet(project.graph, project.params, project.nodes, project.source, lowland.defaults)
+    plan = compiler.compile(document, ParameterSet.layered([parameters], "map"))
+
+    def params(path: str) -> dict[str, object]:
+        return plan.node(path).params.model_dump()
+
+    assert params("terraforming/rivers_and_water/rivers")["real_water_rivers"] == "navigable"
+    assert params("final_terrain/ramp")["length_game_m"] == 500
+    assert params("terraforming/draft_terrain/draft_ramp")["length_game_m"] == 500
+    assert params("biome_creation/forest_edge")["distance_px"] == 2
+    assert lowland.defaults["climate"]["name"] == "Lowland"
+    assert lowland.defaults["climate_texts"]["strings_de"]["Lowlands"] == "Flachland"
+
+
+def test_forest_shrinks_along_its_edge_when_set() -> None:
+    library, store = FolderLibrary([GRAPHS_DIR]), Path(__file__).resolve().parents[2] / "configs" / "projects"
+    compiler = GraphCompiler(NodeCatalog.from_modules(BUILTIN_MODULES), library)
+    project = ParameterSet.load(store / "golden_test.toml")
+    document = library.get("map")
+    assert document is not None
+
+    def distance(params: dict[str, object]) -> object:
+        parameters = ParameterSet(project.graph, {**project.params, **params}, project.nodes, project.source,
+                                  project.defaults)
+        plan = compiler.compile(document, ParameterSet.layered([parameters], "map"))
+        return plan.node("biome_creation/forest_edge").params.model_dump()["distance_px"]
+
+    assert distance({}) == 0
+    assert distance({"forest_shrink_px": 2}) == 2
+    forest = Mask(np.zeros((9, 9), dtype=bool), FRAME).like(np.pad(np.ones((5, 5), dtype=bool), 2))
+    edge = masks.near(masks.invert(forest), masks.NearParams(distance_px=1))
+    assert masks.subtract(forest, (edge,)).values.sum() == 9                # 5 x 5 -> 3 x 3
+    unchanged = masks.near(masks.invert(forest), masks.NearParams(distance_px=0))
+    assert np.array_equal(masks.subtract(forest, (unchanged,)).values, forest.values)

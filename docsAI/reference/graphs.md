@@ -118,16 +118,25 @@ Exposed parameters:
 - `game_width_km` -> `source_data.game_width_km`
 - `game_height_km` -> `source_data.game_height_km`
 - `scale` -> `source_data.scale`: scale 1:scale
+- `height_scale` -> `source_data.height_scale`: heights 1:height_scale; empty = like the distances
 - `rotation_deg` -> `source_data.rotation_deg`
 - `min_height_m` -> `terraforming.min_height_m`: lowest land; empty = lowest point
 - `water_sink_m` -> `terraforming.water_sink_m`, `final_terrain.water_sink_m`: core of real water this much below the lowest land
 - `max_height_m` -> `final_terrain.max_height_m`: white of the heightmap; empty = highest point
+- `real_water_rivers` -> `terraforming.real_water_rivers`: which waterways may be real water: all (below the limit) or only navigable ones (CEMT class, navigable_names, unnamed canals attached to them)
+- `navigable_names` -> `terraforming.navigable_names`: waterways whose name starts with one of these count as navigable (case-insensitive)
+- `ramp_length_game_m` -> `terraforming.ramp_length_game_m`, `final_terrain.ramp_length_game_m`: ramp of the painted riverbed down to real water over this length (game m); 0 = no ramp
+- `ramp_corridor_game_m` -> `terraforming.ramp_corridor_game_m`, `final_terrain.ramp_corridor_game_m`: the terrain beside the ramp follows it this far on each side (game m)
 - `real_water_until_m` -> `terraforming.real_water_until_m`, `final_terrain.real_water_until_m`: real (game) water only up to this height a.s.l.; above painted water; empty = 120 m above the lowest land
 - `climate_reference_step_m` -> `climate.climate_reference_step_m`: the climate mod's reference height = the lowest land rounded to this step (0 = exact)
 - `max_towns` -> `planning.max_towns`: at most this many towns (0 = from the map area)
+- `ignore_town_size` -> `planning.ignore_town_size`: ignore the real town size: all towns start at the minimum and count as equal (industries, roads)
+- `industry_density` -> `planning.industry_density`: industry density: factories per type, raw-material industries and resource areas x this factor
+- `all_cargos` -> `planning.all_cargos`: all cargos: resources without fitting land get areas anyway (unrealistic); factories without input source are placed anyway
 - `town_min_distance_game_m` -> `planning.town_min_distance_game_m`: minimum distance between towns
 - `path_forest_gap_game_m` -> `biome_creation.path_forest_gap_game_m`: gap in the forest along paths
 - `road_forest_gap_game_m` -> `biome_creation.road_forest_gap_game_m`: gap in the forest along roads
+- `forest_shrink_px` -> `biome_creation.forest_shrink_px`: shrink the forest along its edge (1 px = 4 game m; 0 = off) against the game's coarse layer reading
 - `biome_limits_m` -> `terraforming.biome_limits_m`: preset: borders between biome 1|2, 2|3, 3|4 (m)
 - `mountains_from_m` -> `terraforming.mountains_from_m`: preset: mountain mask from (m)
 - `forest_classes` -> `terraforming.forest_classes`, `final_terrain.forest_classes`: preset
@@ -161,7 +170,7 @@ Nodes:
 
 **Biome Creation**
 
-The masks of the game's import dialog, on the heightmap grid: the biome map (grey 0/63/127/191/255) and the mountain mask; forest (WorldCover trees, minus water, banks, riverbed, fields and gaps along paths and roads), meadow, cropland (OpenStreetMap fields), rock, glacier, painted water, shore, riverbed, the crop layers (corn, wheat, soil) and the transition mask; land cover and crop previews.
+The masks of the game's import dialog, on the heightmap grid: the biome map (grey 0/63/127/191/255) and the mountain mask; forest (WorldCover trees, minus water, banks, riverbed, fields, gaps along paths and roads and a strip along its edge), meadow, cropland (OpenStreetMap fields), rock, glacier, painted water, shore, riverbed, the crop layers (corn, wheat, soil) and the transition mask; land cover and crop previews.
 
 Inputs: `biomes: classes`, `mountains: mask`, `paths: path_plan`, `no_cover: mask`, `roads: road_lines`, `forest: mask`, `meadow: mask`, `cropland: mask`, `rock: mask`, `glacier: mask`, `water: mask`, `shore: mask`, `riverbed: mask`, `crop_type: classes`, `crops_preview: image`, `planning_landcover: classes`, `frame: map_frame`  
 Outputs: `forest: mask`
@@ -170,6 +179,7 @@ Exposed parameters:
 
 - `path_forest_gap_game_m` -> `path_gaps.width_game_m`: gap in the forest along paths
 - `road_forest_gap_game_m` -> `road_gaps.width_game_m`: gap in the forest along roads
+- `forest_shrink_px` -> `forest_edge.distance_px`: shrink the forest by this many pixels along its edge (1 px = 4 game m; 0 = off): the game reads the layer coarsely and plants a whole cell as soon as it holds forest
 - `transition` -> `transition_mask.transition`: landscape: a second look on part of the map
 
 Nodes:
@@ -180,7 +190,9 @@ Nodes:
 - `mountains_png` [graph:mask_png](#mask_png)
 - `path_gaps` [lines.strip](nodes.md#linesstrip)
 - `road_gaps` [lines.strip](nodes.md#linesstrip)
-- `forest` [mask.subtract](nodes.md#masksubtract): gaps along paths and roads
+- `no_forest` [mask.invert](nodes.md#maskinvert)
+- `forest_edge` [mask.near](nodes.md#masknear): outside the forest and a strip along its edge
+- `forest` [mask.subtract](nodes.md#masksubtract): gaps along paths and roads, the edge strip
 - `forest_png` [graph:mask_png](#mask_png)
 - `meadow_png` [graph:mask_png](#mask_png)
 - `cropland_png` [graph:mask_png](#mask_png)
@@ -229,7 +241,7 @@ Nodes:
 
 **Final Terrain**
 
-The terrain that is written: evened out around towns (tilted plane) and industries (level), the terrain chain again on the settled heights (water, banks, layers), country roads and paths worked into the terrain (level across, smoothed grade-limited profile, cut and fill), the riverbed groove, and the 16-bit heightmap with its height references.
+The terrain that is written: evened out around towns (tilted plane) and industries (level), the terrain chain again on the settled heights (water, banks, layers), painted riverbeds ramped down into real water, country roads and paths worked into the terrain (level across, smoothed grade-limited profile, cut and fill), the riverbed groove, and the 16-bit heightmap with its height references.
 
 Inputs: `land: field`, `worldcover_water: mask`, `land_min_m: number`, `map_format: map_format`, `towns: town_list`, `industries: industry_list`, `landcover: classes`, `river_plan: river_plan`, `farmland: osm_areas`, `roads: road_lines`, `paths: path_plan`, `black_m: number`  
 Outputs: `no_cover: mask`, `forest: mask`, `meadow: mask`, `cropland: mask`, `rock: mask`, `glacier: mask`, `water: mask`, `shore: mask`, `riverbed: mask`, `crop_type: classes`, `crops_preview: image`, `planning_landcover: classes`, `heightmap: image`, `white_m: number`
@@ -238,6 +250,8 @@ Exposed parameters:
 
 - `water_sink_m` -> `final.water_sink_m`: core of real water this much below the lowest land
 - `max_height_m` -> `heightmap.max_height_m`: white of the heightmap; empty = highest point
+- `ramp_length_game_m` -> `ramp.length_game_m`: ramp of the painted riverbed down to real water over this length (game m); 0 = no ramp
+- `ramp_corridor_game_m` -> `ramp.corridor_game_m`: the terrain beside the ramp follows it this far on each side (game m)
 - `real_water_until_m` -> `final.real_water_until_m`: real (game) water only up to this height a.s.l.; above painted water
 - `forest_classes` -> `final.forest_classes`: preset
 - `meadow_classes` -> `final.meadow_classes`: preset
@@ -252,6 +266,7 @@ Nodes:
 - `final` [graph:terrain_core](#terrain_core)
 - `road_terrain` [roads.terrain](nodes.md#roadsterrain)
 - `path_terrain` [paths.terrain](nodes.md#pathsterrain)
+- `ramp` [riverbed.ramp](nodes.md#riverbedramp)
 - `groove` [riverbed.groove](nodes.md#riverbedgroove)
 - `heightmap` [heightmap.encode](nodes.md#heightmapencode)
 - `heightmap_png` [file.png](nodes.md#filepng)
@@ -372,6 +387,9 @@ Outputs: `towns: town_list`, `industries: industry_list`, `roads: road_lines`, `
 Exposed parameters:
 
 - `max_towns` -> `towns.max_towns`: at most this many towns (0 = from the map area)
+- `ignore_town_size` -> `towns.ignore_town_size`, `industries.ignore_town_size`: ignore the real town size: all towns start at the minimum and count as equal (industries, roads)
+- `industry_density` -> `industries.industry_density`: industry density: factories per type, raw-material industries and resource areas x this factor
+- `all_cargos` -> `industries.all_cargos`: all cargos: resources without fitting land get areas anyway (unrealistic); factories without input source are placed anyway
 - `town_min_distance_game_m` -> `towns.town_min_distance_game_m`: minimum distance between towns
 - `industries` -> `industries.industries`: preset: the industry planning of the climate
 
@@ -393,6 +411,9 @@ Outputs: `industries: industry_list`
 Exposed parameters:
 
 - `industries` -> `industry_areas.industries`, `industry_plan.industries`: preset: the industry planning of the climate
+- `ignore_town_size` -> `industry_plan.ignore_town_size`: all towns equal: each is medium and gets a long-distance cargo
+- `industry_density` -> `industry_areas.industry_density`, `industry_plan.industry_density`: industry density: factories per type, raw-material industries and resource areas x this factor
+- `all_cargos` -> `industry_areas.all_cargos`, `industry_plan.all_cargos`: all cargos: resources without fitting land get areas anyway (unrealistic); factories without input source are placed anyway
 
 Nodes:
 
@@ -440,6 +461,7 @@ Outputs: `towns: town_list`
 Exposed parameters:
 
 - `max_towns` -> `towns.max_towns`: at most this many towns (0 = from the map area)
+- `ignore_town_size` -> `towns.ignore_size`: ignore the real town size: all towns start at the minimum and count as equal (industries, roads)
 - `town_min_distance_game_m` -> `towns.min_distance_game_m`: minimum distance between towns
 
 Nodes:
@@ -484,6 +506,7 @@ Exposed parameters:
 - `game_width_km` -> `format.game_width_km`
 - `game_height_km` -> `format.game_height_km`
 - `scale` -> `format.scale`: scale 1:scale
+- `height_scale` -> `format.height_scale`: heights 1:height_scale; empty = like the distances
 - `rotation_deg` -> `on_map.rotation_deg`, `original.rotation_deg`
 
 Nodes:
@@ -513,6 +536,10 @@ Exposed parameters:
 
 - `min_height_m` -> `elevation.min_height_m`: lowest land; empty = lowest point
 - `water_sink_m` -> `elevation.water_sink_m`, `draft_terrain.water_sink_m`: core of real water this much below the lowest land
+- `real_water_rivers` -> `rivers_and_water.real_water_rivers`: which waterways may be real water: all (below the limit) or only navigable ones (CEMT class, navigable_names, unnamed canals attached to them)
+- `navigable_names` -> `rivers_and_water.navigable_names`: waterways whose name starts with one of these count as navigable (case-insensitive)
+- `ramp_length_game_m` -> `draft_terrain.ramp_length_game_m`: ramp of the painted riverbed down to real water over this length (game m); 0 = no ramp
+- `ramp_corridor_game_m` -> `draft_terrain.ramp_corridor_game_m`: the terrain beside the ramp follows it this far on each side (game m)
 - `real_water_until_m` -> `rivers_and_water.real_water_until_m`, `draft_terrain.real_water_until_m`: real (game) water only up to this height a.s.l.; above painted water
 - `biome_limits_m` -> `biomes.biome_limits_m`: preset: borders between biome 1|2, 2|3, 3|4 (m)
 - `mountains_from_m` -> `biomes.mountains_from_m`: preset: mountain mask from (m)
@@ -563,6 +590,8 @@ Outputs: `draft_planning_landcover: classes`, `draft_water: mask`, `draft_glacie
 Exposed parameters:
 
 - `water_sink_m` -> `draft.water_sink_m`: core of real water this much below the lowest land
+- `ramp_length_game_m` -> `draft_ramp.length_game_m`: ramp of the painted riverbed down to real water over this length (game m); 0 = no ramp
+- `ramp_corridor_game_m` -> `draft_ramp.corridor_game_m`: the terrain beside the ramp follows it this far on each side (game m)
 - `real_water_until_m` -> `draft.real_water_until_m`: real (game) water only up to this height a.s.l.; above painted water
 - `forest_classes` -> `draft.forest_classes`: preset
 - `meadow_classes` -> `draft.meadow_classes`: preset
@@ -573,6 +602,7 @@ Exposed parameters:
 Nodes:
 
 - `draft` [graph:terrain_core](#terrain_core): the terrain the planners see
+- `draft_ramp` [riverbed.ramp](nodes.md#riverbedramp)
 - `draft_groove` [riverbed.groove](nodes.md#riverbedgroove)
 - `draft_heightmap` [heightmap.encode](nodes.md#heightmapencode)
 - `draft_heights` [heightmap.decode](nodes.md#heightmapdecode): heights as the game sees them
@@ -633,6 +663,8 @@ Outputs: `river_plan: river_plan`, `worldcover_water: mask`
 Exposed parameters:
 
 - `real_water_until_m` -> `rivers.real_water_until_m`: real (game) water only up to this height a.s.l.; above painted water
+- `real_water_rivers` -> `rivers.real_water_rivers`: which waterways may be real water: all (below the limit) or only navigable ones (CEMT class, navigable_names, unnamed canals attached to them)
+- `navigable_names` -> `rivers.navigable_names`: waterways whose name starts with one of these count as navigable (case-insensitive)
 
 Nodes:
 
@@ -684,8 +716,8 @@ Nodes:
 
 The terrain chain from heights to layers, without writing anything: water shaping with the river plan, water and shore layers, painted riverbed, OSM fields with crop types, and the class layers (forest, meadow, cropland, rock, glacier) and a preview of the crops leaving water, its border, the riverbed and the fields free. Used twice by a map: as draft for the planners and finally on the settled terrain.
 
-Inputs: `heights: field`, `landcover: classes`, `rivers: river_plan`, `land_min_m: number`, `farmland: osm_areas`  
-Outputs: `heights: field`, `centre: mask`, `no_cover: mask`, `forest: mask`, `meadow: mask`, `cropland: mask`, `rock: mask`, `glacier: mask`, `water: mask`, `shore: mask`, `riverbed: mask`, `crop_type: classes`, `crops_preview: image`, `planning_landcover: classes`
+Inputs: `heights: field`, `landcover: classes`, `rivers: river_plan`, `land_min_m: number`, `map_format: map_format`, `farmland: osm_areas`  
+Outputs: `heights: field`, `centre: mask`, `no_cover: mask`, `forest: mask`, `meadow: mask`, `cropland: mask`, `rock: mask`, `glacier: mask`, `water: mask`, `shore: mask`, `riverbed: mask`, `real: mask`, `crop_type: classes`, `crops_preview: image`, `planning_landcover: classes`
 
 Exposed parameters:
 

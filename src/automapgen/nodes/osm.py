@@ -150,12 +150,13 @@ class GeofabrikIndex:
 
 @dataclass(frozen=True)
 class Way:
-    """An OSM way: id, name (or its relation's name), kind, navigability and its nodes (ref, lon, lat)."""
+    """An OSM way: id, name (or its relation's name), kind, CEMT class (`CEMT` tag, inland waterway class) and its
+    nodes (ref, lon, lat)."""
 
     id: int
     name: str
     kind: str
-    boat: str
+    cemt: str
     nodes: tuple[tuple[int, float, float], ...]
 
 
@@ -163,11 +164,13 @@ class _WaysCodec:
     suffix = ".json"
 
     def save(self, value: OsmWays, path: Path) -> None:
-        path.write_text(json.dumps([[w.id, w.name, w.kind, w.boat, w.nodes] for w in value.ways]), encoding="utf-8")
+        path.write_text(json.dumps([[w.id, w.name, w.kind, w.cemt, w.nodes] for w in value.ways]),
+                        encoding="utf-8")
 
     def load(self, path: Path) -> OsmWays:
         data = json.loads(path.read_text(encoding="utf-8"))
-        return OsmWays(tuple(Way(i, n, k, b, tuple((r, x, y) for r, x, y in pts)) for i, n, k, b, pts in data))
+        return OsmWays(tuple(Way(i, n, k, c, tuple((r, x, y) for r, x, y in pts))
+                             for i, n, k, c, pts in data))
 
 
 @data_type("osm_ways", "OpenStreetMap ways (lines) of one kind touching the map.", codec=_WaysCodec(),
@@ -211,8 +214,9 @@ def waterways(frame: MapFrame, params: WaterwayParams, context: NodeContext) -> 
                     or obj.tags.get("covered") == "yes"):   # underground (gallery, culvert): no surface river
                 continue
             ways.append(Way(obj.id, obj.tags.get("name", ""), obj.tags.get("waterway"),
-                            obj.tags.get("boat") or obj.tags.get("ship") or obj.tags.get("CEMT") or "", pts))
-    named = tuple(w if w.name else Way(w.id, relation_name.get(w.id, ""), w.kind, w.boat, w.nodes) for w in ways)
+                            obj.tags.get("CEMT", ""), pts))
+    named = tuple(w if w.name else Way(w.id, relation_name.get(w.id, ""), w.kind, w.cemt, w.nodes)
+                  for w in ways)
     context.log(f"{len(named)} waterway sections ({', '.join(params.types)})")
     return OsmWays(named)
 

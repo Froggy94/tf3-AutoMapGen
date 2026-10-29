@@ -88,7 +88,7 @@ The layers of the preset *Alpine Realistic* (the key is also the file name `<map
 |---|---|---|
 | 0 | `transition_mask` on maps with a transition (the base climate's `rivers` layer is left out) | the area where the second look has begun |
 | 1 | `mountains` (original) | mountain mask from the heights |
-| 2 | `forest` | WorldCover tree cover, minus water, river beds and gaps along paths and roads |
+| 2 | `forest` | WorldCover tree cover, minus water, river beds, fields and gaps along paths and roads; optionally shrunk along its edge (`forest_shrink_px`), because the game reads the layer coarsely and plants a whole cell as soon as it holds forest |
 | 3 | `meadow` | WorldCover grassland, shrubland, built-up area, wetland, moss; cropland without an OSM field |
 | 4 | `cropland` | OpenStreetMap fields |
 | 5 | `rock` | WorldCover bare and sparsely vegetated ground |
@@ -162,6 +162,24 @@ dither = true
 ```
 
 A new look is a new preset that `extends` an existing one and states only the differences - no code.
+
+**Lowland** ([configs/presets/lowland_realistic.toml](../configs/presets/lowland_realistic.toml)) is
+such a preset, for flat land with canals and rivers. It extends *Alpine Realistic* and changes the water and the
+look:
+
+- **Waterway classes** (`real_water_rivers = "navigable"`): in flat land nearly every river lies below the real water
+  limit, and real water is cut down to the game's single water level, so every brook would become a trench. With
+  this setting only navigable waterways become real water: ways with an inland waterway class in OpenStreetMap
+  (`CEMT` tag), every way of the same name, names listed in `navigable_names` (prefix match, e.g.
+  `["Dortmund-Ems-Kanal"]` where OSM has no class) and unnamed canals attached to them. Other rivers stay painted
+  water at their width, also where a canal crosses them; lakes a painted river flows through stay painted as well
+  (e.g. a lake on a brook: no crater down to the water line). The default `"all"` keeps the earlier behaviour.
+- **Ramps** (`ramp_length_game_m = 500`): where a painted riverbed meets real water, the bed falls linearly to the
+  water line over this length and the terrain beside it (`ramp_corridor_game_m`, 60 game m on each side) follows;
+  without it the painted river would end at a step above the canal. 0 = no ramp.
+- Forest shrunk by 2 px along its edge, about a third conifers below the conifer height (Münsterland: 67 % broadleaf,
+  33 % conifer, Wald und Holz NRW, Landeswaldinventur 2022), no boulders in forests, on shores and in riverbeds, and
+  its own mod name and texts ([configs/mod_texts/lowland.toml](../configs/mod_texts/lowland.toml)).
 
 A **landscape** can change the look across one map. The Brenner map changes from the green northern Alps to the
 drier southern Alps: between the Inn valley (47.27° N) and Brixen (46.72° N) the share of the southern look rises

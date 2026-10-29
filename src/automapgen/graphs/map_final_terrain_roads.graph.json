@@ -45,7 +45,7 @@
   },
   "unlink": [
     [
-      "final.heights",
+      "ramp.heights",
       "road_terrain.heights"
     ],
     [
@@ -59,7 +59,7 @@
   ],
   "links": [
     [
-      "final.heights",
+      "ramp.heights",
       "road_network.heights"
     ],
     [

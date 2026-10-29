@@ -104,6 +104,9 @@ class TownParams(NodeParams):
     """All start sizes multiplied by this (e.g. 0.5 = half, they grow in game)."""
     min_start_capacity: int = param(45, ge=0)
     """Never smaller than this (a hamlet)."""
+    ignore_size: bool = False
+    """Ignore the real town size: all towns start at min_start_capacity (start_scale unused); places are still
+    chosen largest first."""
     com_cargo: tuple[str, ...] = ("vegetables", "fish", "meat")
     """Commercial cargo demand in turns (like the game's random maps)."""
     ind_cargo: tuple[str, ...] = ("planks", "bricks", "fuel")
@@ -157,7 +160,7 @@ def plan(heights: Field, heightmap: Image, black_m: float, water: Mask, shore: M
     def to_grid(a: NDArray[Any]) -> FloatMap:
         return resize_floats(a, nx, ny, PilImage.Resampling.BOX)
 
-    game_height = to_grid((heights.values - black_m) * map_format.game_per_real)
+    game_height = to_grid((heights.values - black_m) * map_format.height_game_per_real)
     blocked = to_grid((heightmap.pixels == 0).astype("float32")) > 0       # core of game water
     for layer in (water, shore, glacier, rock):
         blocked = blocked | (to_grid(layer.values.astype(np.float32)) > _LAYER_LIMIT)
@@ -251,7 +254,8 @@ class _TownPlanner:
             if close:
                 skipped.append((place, f"too close to {close[0].place.name}"))
                 continue
-            capacity = max(p.min_start_capacity, round(self.target_capacity(place.population) * p.start_scale))
+            capacity = p.min_start_capacity if p.ignore_size else max(
+                p.min_start_capacity, round(self.target_capacity(place.population) * p.start_scale))
             chosen.append(Town(place, x, y, shift, capacity))
         self._log(chosen, skipped)
         return chosen, skipped
@@ -386,7 +390,7 @@ def settle(heights: Field, water: Mask, land_min_m: float, map_format: MapFormat
     sites = _sites(params, towns.data if towns else None,
                    industries.data.get("industries") if industries and isinstance(industries.data, dict) else
                    (industries.data if industries else None))
-    settler = _Settler(params, map_format.game_per_real, land_min_m, context)
+    settler = _Settler(params, map_format.height_game_per_real, land_min_m, context)
     dem, preview = settler.settle(heights.values, water.values, sites)
     if preview is None:
         preview = np.zeros((1, 1, 3), dtype=np.uint8)

@@ -25,6 +25,12 @@
       ],
       "description": "at most this many towns (0 = from the map area)"
     },
+    "ignore_town_size": {
+      "to": [
+        "towns.ignore_size"
+      ],
+      "description": "ignore the real town size: all towns start at the minimum and count as equal (industries, roads)"
+    },
     "town_min_distance_game_m": {
       "to": [
         "towns.min_distance_game_m"

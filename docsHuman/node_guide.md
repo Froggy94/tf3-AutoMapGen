@@ -25,6 +25,9 @@ def below(value: Field, params: BelowParams, context: NodeContext) -> Mask:
   (only with `side_effects=True`).
 - `version` + `migrations={old_version: function}` for incompatible parameter changes.
 - Mistakes in a declaration are `NodeDefinitionError`s when the catalog is built - not at run time.
+- Real metres to game metres: distances with `MapFormat.game_per_real`, heights (elevations, depths, slopes as height
+  per pixel) with `MapFormat.height_game_per_real`; the two differ when a map has its own height scale
+  ([ADR 0019](../docsAI/adr/0019-heights-and-distances-two-factors.md)).
 
 Data types: `@data_type("mask", "description", codec=..., preview=..., fingerprint=...)` on a frozen class. A data
 type whose class derives from another data type's class fits that type's ports (`river_plan` is a `json_document`,

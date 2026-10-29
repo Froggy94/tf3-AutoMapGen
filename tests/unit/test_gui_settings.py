@@ -110,6 +110,7 @@ def test_advanced_settings_of_a_project(advanced: AdvancedSettings) -> None:
     assert climate.base["name"] == "Alpine Realistic"
     assert ("params", "road_min_capacity") not in entries         # the road network is not in the graph map
     assert ("params", "crop") not in entries           # the main page's
+    assert ("params", "height_scale") not in entries
     assert not any(store[1].endswith("_png") for store in entries if store[0] == "nodes")    # hidden: file.*
     assert [s.key for s in advanced.describe(doc)][:2] == ["terrain", "water"]
 

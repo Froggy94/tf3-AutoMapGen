@@ -1,0 +1,31 @@
+# Climate preset "Lowland" (temperate base climate) for flat land with canals and rivers: Alpine Realistic
+# with only navigable waterways as real water (other rivers stay painted water), ramps where a painted riverbed meets
+# real water, broadleaf-rich forest, no boulders, livestock at all heights and the lowland texts. Projects extend
+# the preset: extends = ["../presets/lowland_realistic.toml"].
+
+extends = ["alpine_realistic.toml",   # everything else as in Alpine Realistic
+           "../mod_texts/lowland.toml"]   # names and texts of the published climate mod (replace the alpine ones)
+
+[defaults]
+real_water_rivers = "navigable"         # real water only on navigable waterways (CEMT class, navigable_names)
+ramp_length_game_m = 500                # painted riverbeds fall to the water line before they meet real water
+forest_shrink_px = 2                    # forest layer shrunk along its edge
+
+[defaults.economy]
+name = "Lowlands"
+name_with_extra_industries = "Lowlands (all industries)"
+
+[defaults.climate]
+name = "Lowland"                        # short: the name appears three times in the mod's file paths (Windows limit)
+map_preview_level = 100
+
+[defaults.climate.forest]
+conifer_share_below = 0.3               # Münsterland: 67 % broadleaf, 33 % conifer (Wald und Holz NRW, LWI 2022)
+
+[defaults.climate.rocks]                # no boulders in forests, on shores and in riverbeds
+forest = 0
+shore = 0
+riverbed = 0
+
+[defaults.industries.sites.resources.livestock]
+height_m = [-100, -100, 1400, 1800]    # pastures at all heights (Alpine: from 450 m)

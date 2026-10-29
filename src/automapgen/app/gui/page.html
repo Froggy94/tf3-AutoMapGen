@@ -86,6 +86,9 @@
       <input type="range" id="scale" min="0.1" max="1" step="0.001" value="0.5"></label>
     <label class="row"><input type="checkbox" id="snap" checked style="flex:0">
       <span>fixed steps</span></label>
+    <label>Heights 1: (empty = like the distances, 1 = real heights, below 1 = higher than real)
+      <input type="number" id="heightScale" min="0.1" max="10" step="0.1"></label>
+    <div class="info" id="heightInfo"></div>
     <div class="info" id="mapInfo"></div>
     <div class="info" id="areaWarn"></div>
   </fieldset>
@@ -133,6 +136,8 @@
       <label>Number (max.) <input type="number" id="townsMax" min="0" step="1"></label>
       <label>Minimum distance km <input type="number" id="townsDist" min="0" step="0.1"></label>
     </div>
+    <label class="row"><input type="checkbox" id="townsIgnoreSize" style="flex:0">
+      <span>Ignore real town size, start all at minimum population</span></label>
     <div class="info" id="townsInfo"></div>
   </fieldset>
 
@@ -246,7 +251,11 @@ function update(fetchStats = true) {
   if (!SETUP || !doc) return;
   const s = scaleValue(), b = crop(), [gw, gh, tw, th] = gameKm();
   if ($('snap').checked) $('scale').value = 1 / s;
-  $('scaleTxt').textContent = `1:${fmt(s)} (heights and distances, ${fmt(1 / s, 3)} game metres per real metre)`;
+  const h = heightScale();
+  $('scaleTxt').textContent = h != null
+    ? `1:${fmt(s)} (distances, ${fmt(1 / s, 3)} game metres per real metre; heights 1:${fmt(h)})`
+    : `1:${fmt(s)} (heights and distances, ${fmt(1 / s, 3)} game metres per real metre)`;
+  $('heightScale').placeholder = `like distances: ${fmt(s)}`;
   const area = gw * gh;
   $('mapInfo').innerHTML = `Game map ${fmt(gw, 3)} × ${fmt(gh, 3)} km (${fmt(tw, 0)} × ${fmt(th, 0)} tiles, ` +
     `${fmt(tw * SETUP.tile_px + 1, 0)} × ${fmt(th * SETUP.tile_px + 1, 0)} px), ${fmt(area, 0)} km²<br>` +
@@ -288,6 +297,7 @@ function update(fetchStats = true) {
   $('realInfo').innerHTML += ' Higher = more real water, but every real river is cut down to the game\'s single ' +
     'water level: high values give deep trenches (check the rivers preview).';
   showReference();
+  showHeights();
   if (fetchStats) statsLater();
   validate();
 }
@@ -313,6 +323,18 @@ function showReference() {
       `<br><span class="warn">Land below ${fmt(minh, 0)} m is raised to the reference height.</span>` : '');
 }
 
+// heights 1:h next to distances 1:s: the slope factor and, with the crop's heights, the expected highest point
+const heightScaleValid = () => $('heightScale').value === '' || (+$('heightScale').value > 0 && +$('heightScale').value <= 10);
+const heightScale = () => $('heightScale').value !== '' && heightScaleValid() ? +$('heightScale').value : null;
+function showHeights() {
+  const s = scaleValue(), h = heightScale();
+  if (h == null || h === s) { $('heightInfo').textContent = ''; return; }
+  const ref = referenceHeight();
+  $('heightInfo').innerHTML = `Slopes ×${fmt(s / h, 2)} in game (more bridges and tunnels, less building land for towns).` +
+    (cropMax != null && ref != null ?
+      `<br>Highest point in game: <b>${fmt((cropMax - ref) / h, 0)} m</b> (with the distance scale ${fmt((cropMax - ref) / s, 0)} m).` : '');
+}
+
 let statsTimer = null;
 function statsLater() { clearTimeout(statsTimer); statsTimer = setTimeout(stats, 500); }
 async function stats() {
@@ -336,6 +358,7 @@ function startBlockers() {
     if (!SETUP.api_key_set) reasons.push('Elevation data: no OpenTopography API key saved.');
   } else if (!$('demPath').value) reasons.push('Elevation data: enter the GeoTIFF file.');
   else if (inside(crop()) === false) reasons.push('Elevation data: the crop reaches out of the GeoTIFF file.');
+  if (!heightScaleValid()) reasons.push('Map: the height scale must be above 0 and at most 10 (empty = like the distances).');
   if (!chosenSteps().length) reasons.push('Processing steps: tick at least one step.');
   if (graphProblems.length) reasons.push('Project: the project does not fit the graph (see below the graph list).');
   return reasons;
@@ -367,6 +390,7 @@ function documentOfPage() {
     map_name: $('mapName').value.trim(), crop: crop(), game_width_km: gw, game_height_km: gh, scale: scaleValue(),
     rotation_deg: rotation(), water_sink_m: +$('sink').value
   });
+  if (heightScale() != null) p.height_scale = heightScale(); else delete p.height_scale;
   // empty fields = the nodes' defaults (lowest point, real water 120 m above it, rounding step)
   for (const [key, id] of [['min_height_m', 'minh'], ['real_water_until_m', 'realUntil'],
                            ['climate_reference_step_m', 'climStep']]) {
@@ -375,6 +399,7 @@ function documentOfPage() {
   if (downloading()) { delete p.dem_path; p.dem_download = { dem_type: $('demType').value }; }
   else { delete p.dem_download; p.dem_path = $('demPath').value.trim(); }
   if ($('townsMax').value === '') delete p.max_towns; else p.max_towns = +$('townsMax').value;
+  if ($('townsIgnoreSize').checked) p.ignore_town_size = true; else delete p.ignore_town_size;
   if ($('townsDist').value === '') delete p.town_min_distance_game_m;
   else p.town_min_distance_game_m = Math.round(+$('townsDist').value * 1000);
   return { ...doc, graph: $('graph').value || doc.graph || 'map', extends: [$('look').value], params: p };
@@ -394,6 +419,7 @@ async function showDocument(id, d) {
   if (found) { $('size').value = found[0]; $('format').value = found[1]; }
   else if (p.game_width_km) $('size').value = 'custom';
   if (p.scale) { $('snap').checked = SETUP.scale_steps.includes(p.scale); $('scale').value = 1 / p.scale; }
+  $('heightScale').value = p.height_scale ?? '';
   $('rotation').value = String(p.rotation_deg || 0);
   if (p.crop) {
     fixedCrop = { ...p.crop };
@@ -409,6 +435,7 @@ async function showDocument(id, d) {
   $('demPath').value = p.dem_path || '';
   if (p.dem_download) $('demType').value = p.dem_download.dem_type;
   $('townsMax').value = p.max_towns ?? '';
+  $('townsIgnoreSize').checked = !!p.ignore_town_size;
   $('townsDist').value = p.town_min_distance_game_m != null ? p.town_min_distance_game_m / 1000 : '';
   $('projectList').value = id || '';
   await loadTif();
@@ -719,7 +746,8 @@ async function init() {
     keyInfo();
     update(false);
   };
-  ['size', 'format', 'snap', 'rotation'].forEach(id => $(id).addEventListener('change', changed));
+  ['size', 'format', 'snap', 'heightScale', 'rotation'].forEach(id => $(id).addEventListener('change', changed));
+  $('heightScale').addEventListener('input', () => update(false));
   $('scale').addEventListener('input', () => { fixedCrop = null; update(false); });
   $('scale').addEventListener('change', changed);
   $('minh').addEventListener('input', () => update(false));

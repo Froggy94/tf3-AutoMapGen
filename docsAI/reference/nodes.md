@@ -567,7 +567,8 @@ Parameters:
 
 Version 1
 
-The first (non-booster) production rule of every industry of the game (base/content/industries/*.zip).
+The first (non-booster) production rule of every industry of the game (base/content/industries/*.zip) and the
+inputs of alternative rules with the same outputs.
 
 Inputs: -  
 Outputs: `rules: industry_rules`
@@ -686,6 +687,9 @@ Outputs: `industries: industry_list`, `lua: text_document`, `towns_lua: text_doc
 Parameters:
 
 - `industries` ([IndustrySettings](#industrysettings), required): The industry planning (from the climate preset).
+- `ignore_town_size` (boolean, default `false`): industries.plan only: all towns equal (they start at the same size): each is medium with plan.equal_town_slots factories and gets one long-distance cargo (commercial/industrial in turns).
+- `industry_density` (number, default `1.0`, > 0): Multiplies plan.production_per_type, plan.max_per_type and the number of areas per resource (rounded, at least 1 each).
+- `all_cargos` (boolean, default `false`): Resources without a fitting area get areas anyway, regardless of land cover and height (unrealistic; fish excluded); processing industries whose inputs have no source on the map are placed anyway.
 
 ## industries.resource_areas
 
@@ -700,6 +704,9 @@ Outputs: `grid: industry_grid`, `maps: resource_maps`, `resources_preview: image
 Parameters:
 
 - `industries` ([IndustrySettings](#industrysettings), required): The industry planning (from the climate preset).
+- `ignore_town_size` (boolean, default `false`): industries.plan only: all towns equal (they start at the same size): each is medium with plan.equal_town_slots factories and gets one long-distance cargo (commercial/industrial in turns).
+- `industry_density` (number, default `1.0`, > 0): Multiplies plan.production_per_type, plan.max_per_type and the number of areas per resource (rounded, at least 1 each).
+- `all_cargos` (boolean, default `false`): Resources without a fitting area get areas anyway, regardless of land cover and height (unrealistic; fish excluded); processing industries whose inputs have no source on the map are placed anyway.
 
 ## landcover.worldcover
 
@@ -747,7 +754,7 @@ Parameters:
 
 Version 1
 
-The game map's size and scale.
+The game map's size and scales.
 
 Inputs: -  
 Outputs: `format: map_format`
@@ -756,7 +763,8 @@ Parameters:
 
 - `game_width_km` (number, default `8.192`, unit km, > 0): Width of the game map.
 - `game_height_km` (number, default `8.192`, unit km, > 0): Height of the game map.
-- `scale` (number, default `1.0`, >= 1, <= 10): Scale 1:scale - game metres per real metre = 1 / scale (horizontal and vertical).
+- `scale` (number, default `1.0`, >= 1, <= 10): Scale 1:scale for distances - game metres per real metre = 1 / scale.
+- `height_scale` (number \| none, default `null`): Scale 1:height_scale for heights; None = like `scale`, 1 = real heights, below 1 = higher than real. Slopes in game get scale / height_scale times steeper.
 
 ## mask.above
 
@@ -1095,6 +1103,22 @@ line for the groove.
 Inputs: `beds: bed_segments`, `no_cover: mask`  
 Outputs: `bed: mask`, `centre: mask`
 
+## riverbed.ramp
+
+Version 1
+
+Ramp where a painted riverbed meets real water: along the bed (`bed`) the terrain falls linearly over
+`length_game_m` to the water line + 1 m (game) at the real water (`real`), the terrain beside it follows within
+the corridor. Only lowers; beds that never meet real water stay as they are.
+
+Inputs: `heights: field`, `bed: mask`, `real: mask`, `land_min_m: number`, `map_format: map_format`  
+Outputs: `heights: field`
+
+Parameters:
+
+- `length_game_m` (number, default `0.0`, unit game m, >= 0): The riverbed falls linearly to the water line over this length before it meets real water (0 = no ramp).
+- `corridor_game_m` (number, default `60.0`, unit game m, >= 0): The terrain beside the ramp follows it this far on each side (cosine falloff).
+
 ## rivers.plan
 
 Version 1
@@ -1109,6 +1133,8 @@ Outputs: `plan: river_plan`, `preview: image`, `profiles: image`
 Parameters:
 
 - `real_water_until_m` (number \| none, default `null`, unit m): Real water (game water) only up to this height above sea level (the region's "real water up to"); None = 120 m above the lowest land. Higher = more real water, but real water is cut down to the water line (deep trenches).
+- `real_water_rivers` ("all" \| "navigable", default `"all"`): Which waterways may be real water: "all" (below the limit) or only "navigable" ones (CEMT class, a name in `navigable_names`, unnamed canals attached to them); other rivers stay painted water, also in flat land.
+- `navigable_names` (list of string, default `[]`): Waterways whose name starts with one of these count as navigable (case-insensitive), e.g. ("Dortmund-Ems-Kanal", "Mittellandkanal") where OSM has no CEMT class.
 - `min_real_run_game_m` (number, default `1000.0`, unit game m, >= 0): Shorter connected pieces where real water is possible do not count (tolerance).
 - `min_width_game_m` (number, default `60.0`, unit game m, > 0): Real water: width at least.
 - `max_width_game_m` (number, default `300.0`, unit game m, > 0): Real water: width at most (in lakes the water layer shapes, not the river).
@@ -1314,6 +1340,7 @@ Parameters:
 - `capacity_classes` (list of [integer, string], default `[[80, "hamlet"], [150, "village"], [270, "small town"], [550, "town"], [1000, "city"], [1000000000,  ...`): Editor size classes (upper capacity limit, name) - for the log.
 - `start_scale` (number, default `1.0`, > 0): All start sizes multiplied by this (e.g. 0.5 = half, they grow in game).
 - `min_start_capacity` (integer, default `45`, >= 0): Never smaller than this (a hamlet).
+- `ignore_size` (boolean, default `false`): Ignore the real town size: all towns start at min_start_capacity (start_scale unused); places are still chosen largest first.
 - `com_cargo` (list of string, default `["vegetables", "fish", "meat"]`): Commercial cargo demand in turns (like the game's random maps).
 - `ind_cargo` (list of string, default `["planks", "bricks", "fuel"]`): Industrial cargo demand in turns.
 - `flip_y` (boolean, default `false`): North is -y in game.
@@ -1346,7 +1373,7 @@ Levels lakes, smooths rivers, adds the real river bands of the river plan, shape
 Outputs: terrain, landcover with shore and river classes, water core / levelled border / real water on the
 heightmap grid, and the painted riverbed pieces of the plan.
 
-Inputs: `heights: field`, `landcover: classes`, `land_min_m: number`, `rivers: river_plan` (optional)  
+Inputs: `heights: field`, `landcover: classes`, `land_min_m: number`, `map_format: map_format`, `rivers: river_plan` (optional)  
 Outputs: `heights: field`, `landcover: classes`, `core: mask`, `border: mask`, `real: mask`, `beds: bed_segments`
 
 Parameters:
@@ -1755,6 +1782,7 @@ Settings of the path street mod (a value of configs/map_mods.toml).
 - `medium_town_capacity` (number, required): Towns from this start capacity are medium (intermediate products) ...
 - `large_town_capacity` (number, required): ... and from this large (complex products); below: villages, agriculture.
 - `specializations` (table of integer, required): Factories per town class (village, medium, large).
+- `equal_town_slots` (integer, required): Factories per town when the real town size is ignored (all towns medium).
 - `import_cost_game_m` (number, required): An input without source on the map (foreign trade) counts as this far.
 - `own_allowed` (list of string, required): Towns do not demand their own products - except these.
 - `trade_points` (integer, required): Foreign trade points at the map edge (0 = none).
@@ -1765,7 +1793,7 @@ Settings of the path street mod (a value of configs/map_mods.toml).
 - `far_cargos` (list of string, required): Long-distance cargos.
 - `local_only` (list of string, required): Only for towns up to local_max_game_m from the resource area.
 - `local_max_game_m` (number, required): See local_only.
-- `far_min_capacity` (number, required): From this start capacity one long-distance cargo (commercial/industrial in turns).
+- `far_min_capacity` (number, required): From this start capacity one long-distance cargo (commercial/industrial in turns; all towns when the real town size is ignored).
 - `balance_game_m` (number, required): Local cargos: per town served already (per producer) this much detour.
 - `towns_per_local_producer` (integer, required): Towns one factory or farm supplies (assumption for the amounts).
 - `towns_per_far_producer` (integer, required): Towns one long-distance producer supplies.
@@ -1812,6 +1840,7 @@ Names, author and images of the published mods (a value of configs/publishing.to
 - `peak` (number \| none, default `null`): Own area threshold (default: region_peak_share).
 - `radius_game_m` (number \| none, default `null`): Own area radius (default: region_radius_game_m).
 - `spacing_game_m` (number \| none, default `null`): Own peak spacing (default: region_spacing_game_m).
+- `height_m` ([number, number, number, number], default `[-1000000.0, -1000000.0, 1000000.0, 1000000.0]`): Real height band of the suitability in m a.s.l. (from 0, full from, full to, to 0); unused by fish.
 
 ## RoadModSettings
 

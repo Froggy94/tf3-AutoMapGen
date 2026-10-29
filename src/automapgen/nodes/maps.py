@@ -15,7 +15,7 @@ from numpy.typing import NDArray
 from rasterio.crs import CRS
 from rasterio.warp import transform, transform_bounds
 
-from automapgen.graph import NodeParams, data_type, node, param
+from automapgen.graph import NodeContext, NodeParams, data_type, node, param
 
 GAME_METERS_PER_PIXEL = 4
 """TF3 fact: one heightmap pixel covers 4 game metres."""
@@ -43,11 +43,12 @@ class JsonDataCodec:
            codec=JsonDataCodec(lambda data: MapFormat.from_json(data)))
 @dataclass(frozen=True)
 class MapFormat:
-    """Size of the game map in km and its scale 1:`scale` (game metres per real metre = 1 / scale)."""
+    """Size of the game map in km, its scale 1:`scale` for distances and 1:`height_scale` for heights."""
 
     game_width_km: float
     game_height_km: float
     scale: float
+    height_scale: float
 
     @property
     def width_px(self) -> int:
@@ -59,14 +60,21 @@ class MapFormat:
 
     @property
     def game_per_real(self) -> float:
+        """Game metres per real metre of distance."""
         return 1 / self.scale
 
+    @property
+    def height_game_per_real(self) -> float:
+        """Game metres per real metre of height."""
+        return 1 / self.height_scale
+
     def to_json(self) -> dict[str, float]:
-        return {"game_width_km": self.game_width_km, "game_height_km": self.game_height_km, "scale": self.scale}
+        return {"game_width_km": self.game_width_km, "game_height_km": self.game_height_km, "scale": self.scale,
+                "height_scale": self.height_scale}
 
     @classmethod
-    def from_json(cls, data: dict[str, float]) -> MapFormat:
-        return cls(**data)
+    def from_json(cls, data: dict[str, Any]) -> MapFormat:
+        return cls(**{"height_scale": data["scale"], **data})
 
 
 
@@ -191,13 +199,21 @@ class MapFormatParams(NodeParams):
     game_height_km: float = param(8.192, gt=0, unit="km")
     """Height of the game map."""
     scale: float = param(1.0, ge=1, le=10)
-    """Scale 1:scale - game metres per real metre = 1 / scale (horizontal and vertical)."""
+    """Scale 1:scale for distances - game metres per real metre = 1 / scale."""
+    height_scale: float | None = param(None, gt=0, le=10)
+    """Scale 1:height_scale for heights; None = like `scale`, 1 = real heights, below 1 = higher than real.
+    Slopes in game get scale / height_scale times steeper."""
 
 
 @node("map.format", output="format")
-def map_format(params: MapFormatParams) -> MapFormat:
-    """The game map's size and scale."""
-    return MapFormat(params.game_width_km, params.game_height_km, params.scale)
+def map_format(params: MapFormatParams, context: NodeContext) -> MapFormat:
+    """The game map's size and scales."""
+    height_scale = params.scale if params.height_scale is None else params.height_scale
+    if height_scale != params.scale:
+        steeper = params.scale / height_scale
+        context.log(f"heights 1:{height_scale:g}, distances 1:{params.scale:g} - slopes x{steeper:.2g} in game"
+                    " (more bridges and tunnels, less building land for towns)")
+    return MapFormat(params.game_width_km, params.game_height_km, params.scale, height_scale)
 
 
 class MapProjection:

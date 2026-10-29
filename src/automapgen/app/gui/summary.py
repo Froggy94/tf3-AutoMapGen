@@ -27,7 +27,10 @@ class ImportSummary:
         params, defaults = parameters.params, parameters.defaults
         name = str(params["map_name"])
         folder = self._output / name
-        scale = float(params.get("scale", defaults.get("scale", 1)))
+        height_scale = params.get("height_scale", defaults.get("height_scale"))
+        if height_scale is None:
+            height_scale = params.get("scale", defaults.get("scale", 1))
+        height_scale = float(height_scale)
         heights = self._heights(folder / f"{name}_height_range.json")
         files = [("Heightmap", f"{name}.png"), ("Biomes", f"{name}_biomes.png")]
         files += [(key, f"{name}_{key}.png") for key in sorted(self._layers(defaults))]
@@ -38,9 +41,9 @@ class ImportSummary:
             "map": name,
             "mods": sorted(p.name for p in mods.iterdir()) if mods.is_dir() else [],
             "min_game": None if heights is None
-            else (heights["black_m"] - heights["min_height_m"]) / scale + MIN_HEIGHT_RAISE_GAME_M,
+            else (heights["black_m"] - heights["min_height_m"]) / height_scale + MIN_HEIGHT_RAISE_GAME_M,
             "min_raise_game": MIN_HEIGHT_RAISE_GAME_M,
-            "max_game": None if heights is None else (heights["max_height_m"] - heights["min_height_m"]) / scale,
+            "max_game": None if heights is None else (heights["max_height_m"] - heights["min_height_m"]) / height_scale,
             "max_real": None if heights is None else heights["max_height_m"],
             "files": [(label, file, (folder / file).is_file()) for label, file in files],
             "towns_file": towns,

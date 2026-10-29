@@ -31,6 +31,26 @@
         "industry_plan.industries"
       ],
       "description": "preset: the industry planning of the climate"
+    },
+    "ignore_town_size": {
+      "to": [
+        "industry_plan.ignore_town_size"
+      ],
+      "description": "all towns equal: each is medium and gets a long-distance cargo"
+    },
+    "industry_density": {
+      "to": [
+        "industry_areas.industry_density",
+        "industry_plan.industry_density"
+      ],
+      "description": "industry density: factories per type, raw-material industries and resource areas x this factor"
+    },
+    "all_cargos": {
+      "to": [
+        "industry_areas.all_cargos",
+        "industry_plan.all_cargos"
+      ],
+      "description": "all cargos: resources without fitting land get areas anyway (unrealistic); factories without input source are placed anyway"
     }
   },
   "nodes": {

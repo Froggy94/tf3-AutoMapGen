@@ -60,14 +60,20 @@ user data folder, already in the game.
 ## 4. Your own map
 
 1. **Project**: click *New* and enter a **map name** (letters, digits, `_` and `-`).
-2. **Climate preset**: *Alpine Realistic* for mountain regions of central Europe. A *landscape* such as
-   *Alpine North-South* changes the look gradually across the map.
+2. **Climate preset**: *Alpine Realistic* for mountain regions of central Europe, *Lowland* for flat land
+   with canals and rivers (only navigable waterways become real water, other rivers stay painted; if a canal of your
+   region has no waterway class in OpenStreetMap, name it in the project, e.g.
+   `navigable_names = ["Dortmund-Ems-Kanal"]` under `[params]`). A *landscape* such as *Alpine North-South* changes
+   the look gradually across the map.
    **Reference height** (below it) = the lowest land in m above sea level; it becomes height 0 in the game. Leave it
    empty: then it is the lowest point of the elevation data (after a download the console names it). A value raises
    the land below it. The **climate mod** rounds it to 100 m, so maps with a similar lowest land share one mod.
 3. **Graph**: keep **map - the complete map**. Graphs marked *experimental* are work in progress.
 4. **Map**: choose the game's map size and the aspect ratio. **Scale** stretches the real region: at 1:2 one game
-   metre stands for two real metres, so a larger region fits on the map and mountains become lower.
+   metre stands for two real metres, so a larger region fits on the map and mountains become lower. **Heights 1:**
+   sets a scale for heights alone: empty = like the distances, 1 = real heights, below 1 = higher than real. A
+   smaller height scale than the distance scale makes slopes steeper: fewer towns on hills, more bridges and tunnels.
+   The page shows the slope factor and, with a local elevation file, the highest point in the game.
 5. **Location**: search a place, then drag the rectangle; a double click sets the centre. *Top of the map points to*
    turns the map.
 6. **Elevation data**:
@@ -75,7 +81,14 @@ user data folder, already in the game.
    - **Real water up to**: lakes and rivers up to this elevation become real game water; higher ones are painted. The
      game has only one water level, so keep this close to the reference height. Empty = 120 m above the reference
      height.
-7. **Towns**: maximum number and minimum distance; empty = a default for the map size.
+7. **Towns**: maximum number and minimum distance; empty = a default for the map size. Tick *Ignore real town
+   size* to make all towns equal: the largest places still become the towns, but each starts as a hamlet, gets the
+   same number of factories and one long-distance cargo, and grows in the game.
+   *Advanced settings ...* has two more industry options. *Industry density* multiplies the number of industries
+   and resource areas (2 = twice as many). *All cargos* places every raw material somewhere, even where the land
+   does not fit it. On a flat map like the Münsterland there is no rock and no mountain, so quarries and ore mines
+   only appear with *All cargos*. Without it, a steel mill whose ore has no source is left out, and so are the
+   factories that need its steel.
 8. **Processing steps**: keep all ticked for a new map. Later you can tick only what you want to redo, e.g. only
    *Climate mod*.
 9. Click **Generate**.

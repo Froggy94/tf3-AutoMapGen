@@ -45,8 +45,9 @@ class ProjectChecks:
     @staticmethod
     def warnings(project: Mapping[str, Any], merged: Mapping[str, Any]) -> list[str]:
         """A project file (`project`: its own values) that changes the look but keeps the name of its preset builds a
-        climate mod of the same name as the other maps of that preset (same rounded reference height and scale): one
-        overwrites the other. The mod is named by the transition if the merged `[defaults]` (`merged`) have one."""
+        climate mod of the same name as the other maps of that preset (same rounded reference height, scale and height
+        scale): one overwrites the other. The mod is named by the transition if the merged `[defaults]` (`merged`)
+        have one."""
         own = project.get("defaults", {})
         transition = merged.get("transition")
         named = "transition" if isinstance(transition, Mapping) and transition.get("enabled", True) else "climate"

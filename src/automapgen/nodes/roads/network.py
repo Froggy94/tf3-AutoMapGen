@@ -271,7 +271,7 @@ class _SearchGrid:
     fine_height: FloatMap                  # game metres above the reference, heightmap grid
     fine_wet: _WetZone
     land_min_m: float
-    game_per_real: float
+    height_game_per_real: float
 
     @classmethod
     def of(cls, heights: Field, wet: _WetZone, forest: Mask, rock: Mask, glacier: Mask, map_format: MapFormat,
@@ -285,7 +285,7 @@ class _SearchGrid:
         def share(values: NDArray[Any]) -> FloatMap:
             return resize_floats(values.astype(np.float32), cols, rows, PilImage.Resampling.BOX).astype(float)
 
-        gpr = map_format.game_per_real
+        gpr = map_format.height_game_per_real
         fine = (heights.values.astype(np.float64) - land_min_m) * gpr
         height = resize_floats(fine, cols, rows, PilImage.Resampling.BOX).astype(float)
         zone = share(wet.zone)
@@ -729,9 +729,9 @@ class _TerrainShaper:
         rows, cols = dem.shape
         px = samples.x / g.width_m * (cols - 1)
         py = samples.y / g.height_m * (rows - 1)
-        target = samples.height / g.game_per_real + g.land_min_m            # real metres
+        target = samples.height / g.height_game_per_real + g.land_min_m            # real metres
         ground = map_coordinates(dem, [py, px], order=1, mode="nearest")
-        px_real_m = GAME_METERS_PER_PIXEL / g.game_per_real
+        px_real_m = GAME_METERS_PER_PIXEL / g.height_game_per_real
         half = np.full(len(px), p.width_game_m / GAME_METERS_PER_PIXEL / 2)
         blend = np.maximum(p.blend_min_px, np.abs(target - ground) / p.bank_slope / px_real_m)
         weighted, wmax = LineStamp(dem).stamp(px.astype(np.float32), py.astype(np.float32),

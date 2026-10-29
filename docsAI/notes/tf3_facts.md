@@ -76,6 +76,10 @@ Verified in game, log or game files unless marked *unverified*. Taken over from 
   'cement'" -> town demand disappears). Mod files have their own namespace: game `.con` files can only be copied, not
   replaced. Temperate lacks cement, paper, printing (subarctic), rubber, tyres (tropical).
 - At most 5 stocks per industry (`industryutil.lua` `maxStocks = 5`, assert).
+- Production rules of an industry are alternatives (`rules = { {...}, {...} }`): food factory = 2 fish + 1 sheet metal
+  or 2 meat + 1 sheet metal (`requiredInput` per rule); raw-material industries: rule 1 without input, rule 2 with
+  tools/machines/fertilizer. All other temperate factories have one rule. Verified: game files
+  `base/content/industries/*.zip` (2026-10-28); read by `game.industry_rules`.
 - Industry with 0 fields: `terminateConstructionHook` returns early -> full production (basis of compact industries).
 - Towns/industries import = editor export format (`app.saveUserdata("towns_industries", …)`): towns with `name`,
   `position` (game metres, centre 0, north = +y), `sizeFactors`, one `com` and one `ind` demand; editor capacity =
